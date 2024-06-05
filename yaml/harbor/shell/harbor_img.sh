@@ -2,8 +2,7 @@
 Harbor_Address=172.16.1.200       #Harbor主机地址
 Harbor_User=admin                      #登录Harbor的用户
 Harbor_Passwd=Harbor12345              #登录Harbor的用户密码
-Images_File=./images.list
-Images_docker=./images_docker.list      # 镜像清单文件
+Images_File=./images.list      # 镜像清单文件
 Tar_File=/backup/Harbor-backup/                 #镜像tar包存放路径
 set -x
 
@@ -23,16 +22,28 @@ for Project in $Project_List;do
     done
 done
 
-# 从 images_docker.list 文件中读取镜像名称
-while read -r image_save; do
-    Image_tags=$(uniq $Images_File)
-    for image_tag in $Image_tags;do
-        image_Name=$(echo $image_tag | awk -F/ '{print $3}' |  awk -F: '{print $1}')
-        image_Lable=$(echo $image_tag | awk -F/ '{print $3}' |  awk -F: '{print $2}')
-        docker pull 172.16.1.200/$image_tag
-        docker tag  172.16.1.200/$image_tag $image_tag
-        docker save $image_tag  -o $Tar_File/$image_Name-$image_Lable.tar
-        docker rmi  172.16.1.200/$image_tag
-        docker rmi  $image_tag
-    done
-done < $Images_docker
+# 读取Images_File文件中的镜像名称
+while read -r image_tag; do
+    # 使用awk提取镜像名称和标签，同时处理特殊字符
+    image_Name=$(echo $image_tag | awk -F/ '{print $3}' |  awk -F: '{print $1}' | sed 's/\//-/g')
+    image_Lable=$(echo $image_tag | awk -F/ '{print $3}' |  awk -F: '{print $2}' | sed 's/:/_/g')
+
+    # 检查image_Name和image_Lable是否为空
+    if [ -z "$image_Name" ]; then
+        echo "Error: Empty image_Name for $image_tag" >> error_images.txt
+        continue
+    fi
+    if [ -z "$image_Lable" ]; then
+        echo "Error: Empty image_Lable for $image_tag" >> error_images.txt
+        continue
+    fi
+
+    # 创建安全的文件名
+    image_save="$image_Name-$image_Lable"
+
+    docker pull $Harbor_Address/$image_tag
+    docker tag $Harbor_Address/$image_tag $image_tag
+    docker save $image_tag -o "$Tar_File/$image_save.tar"
+    docker rmi $Harbor_Address/$image_tag
+    docker rmi $image_tag
+done < "$Images_File"
