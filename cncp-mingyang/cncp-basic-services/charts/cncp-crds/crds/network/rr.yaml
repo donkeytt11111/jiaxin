@@ -1,0 +1,127 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: rrs.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: RR
+    listKind: RRList
+    plural: rrs
+    singular: rr
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.name
+          name: NAME
+          type: string
+        - jsonPath: .metadata.namespace
+          name: NAMESPACE
+          type: string  
+        - jsonPath: .spec.type
+          name: type
+          type: string
+        - jsonPath: .spec.nameFQDN
+          name: nameFQDN
+          type: string
+        - jsonPath: .spec.domainSuffix
+          name: domainSuffix
+          type: string  
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: RR is the Schema for the rr API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: RRSpec defines the desired state of RRinterface
+              properties:
+                type:
+                  type: string
+                nameFQDN:
+                  type: string
+                targets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      target:
+                        type: string
+                      weight:  
+                        type: integer
+                      distributionState:
+                        type: string
+                ttl:
+                  type: integer
+                surveyMethod:
+                  type: string
+                mxPreference:
+                  type: integer
+                srvTargets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      srvPriority:
+                        type: integer
+                      srvWeight:
+                        type: integer
+                      srvPort:
+                        type: integer
+                      weight:
+                        type: integer  
+                soaMbox:
+                  type: string
+                soaSerial:
+                  type: integer
+                soaRefresh:
+                  type: integer
+                soaRetry:
+                  type: integer
+                soaExpire:
+                  type: integer
+                soaMinttl:
+                  type: integer
+                subDomain:
+                  type: string  
+                domainSuffix:
+                  type: string                
+              required:
+                - type
+                - nameFQDN
+                - targets
+                - domainSuffix
+              type: object
+            status:
+              properties:
+                targets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      target:
+                        type: string
+                      state:
+                        type: string
+                      count:
+                        type: integer
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}

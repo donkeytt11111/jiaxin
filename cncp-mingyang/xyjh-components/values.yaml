@@ -1,0 +1,15 @@
+cluster:
+  # controlPlaneVIP：必填参数，集群控制平面VIP地址
+  controlPlaneVIP: 172.16.102.200
+dns64:
+  enabled: true
+  networkType: Cluster
+  clusterNetworkIp4ServiceAddress: 172.16.102.120
+  clusterNetworkIp6ServiceAddress: 2408:8631:c02:ffa2::3120
+  resources:
+    storageRequest: 20Gi
+    cpuLimit: 2000m
+    memoryLimit: 8Gi
+
+
+

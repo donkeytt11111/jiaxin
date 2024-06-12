@@ -1,0 +1,67 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: dnsforwardermonitors.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: DnsForwarderMonitor
+    listKind: DnsForwarderMonitorList
+    plural: dnsforwardermonitors
+    singular: dnsforwardermonitor
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.name
+          name: NAME
+          type: string
+        - jsonPath: .metadata.namespace
+          name: NAMESPACE
+          type: string  
+        - jsonPath: .spec.domain
+          name: DOMAIN
+          type: string
+        - jsonPath: .spec.subDomain
+          name: SUBDOMAIN
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: DnsForwarderMonitor is the Schema for the DnsForwarderMonitor API
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: DnsForwarderMonitorSpec defines the desired state of DnsForwarderMonitor interface
+              type: object
+              properties:
+                domain:
+                  type: string
+                subDomain:
+                  type: string   
+                recordType:
+                  type: string 
+                recordValue:
+                  type: array
+                  items:
+                    type: string
+            status:
+              type: object
+          required:
+            - spec
+      served: true
+      storage: true
+      subresources: {}

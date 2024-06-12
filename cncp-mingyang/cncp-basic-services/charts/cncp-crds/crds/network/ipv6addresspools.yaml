@@ -1,0 +1,61 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: ipv6addresspools.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: IPv6AddressPool
+    listKind: IPv6AddressPoolList
+    plural: ipv6addresspools
+    singular: ipv6addresspool
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.subnet
+          name: Subnet
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: IPv6AddressPool is the Schema for the ipv6AddressPools API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: IPv6AddressPoolSpec defines the desired state of IPv6AddressPool
+              properties:
+                subnet:
+                  type: string
+                startAddress:
+                  type: string
+                endAddress:
+                  type: string
+              required:
+                - subnet
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: { }
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: [ ]
+  storedVersions: [ ]
+

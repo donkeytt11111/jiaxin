@@ -1,0 +1,51 @@
+cluster:
+  kubeConfig: |-
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: mingyang
+      cluster:
+        server: https://cncp-ms-01:6443
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJpVENDQVMrZ0F3SUJBZ0lRR2pxaFZzNnVkcTM4Wjl3OUZGSlliVEFLQmdncWhrak9QUVFEQWpBVk1STXcKRVFZRFZRUUtFd3ByZFdKbGNtNWxkR1Z6TUI0WERUSXpNVEV3TnpBM05EZzFObG9YRFRNek1URXdOREEzTkRnMQpObG93RlRFVE1CRUdBMVVFQ2hNS2EzVmlaWEp1WlhSbGN6QlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VICkEwSUFCTlRMQlNORWZMV0cyNkx2Q2t2bVR6QStvQmVmSGZTNFVGZXhvMEVQSmdXckMwS0ZWMXo4NnpYbUM0TzMKWWcxUHA1dDhza0taZTIxUExlUmV3UkpvcXJTallUQmZNQTRHQTFVZER3RUIvd1FFQXdJQ2hEQWRCZ05WSFNVRQpGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZEJnTlZIUTRFCkZnUVUwYlZXUHp1QzdSL21xY2J4RDB4MzZtMzROOVV3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQU5YL1JhYjUKdVZZd1gwZGRmNDlvMjByN01vTGVLcXNHRXlpdU80Q0lucm1GQWlBakdWY2xlTjVrYWZVN1lGb3FqM0VRWXZ4TQptTmhPa1o2TFN3MU80VDZKS2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    users:
+    - name: admin@mingyang
+      user:
+        client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJoVENDQVN1Z0F3SUJBZ0lSQUpZQkJwS0lpQ082NUpTcTU2R0RRTWd3Q2dZSUtvWkl6ajBFQXdJd0ZURVQKTUJFR0ExVUVDaE1LYTNWaVpYSnVaWFJsY3pBZUZ3MHlNekV4TURjd09EUTVNekphRncwek16RXhNRFF3T0RRNQpNekphTUNreEZ6QVZCZ05WQkFvVERuTjVjM1JsYlRwdFlYTjBaWEp6TVE0d0RBWURWUVFERXdWaFpHMXBiakJaCk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQk9LZDEyYndNTlNoUEZhSldzRTZWM3ZjZy80MVY0V2gKb1YyUWtMc1J2dVFxZXFNRUlJenMwZFBqYzdzVHVZK1A1WEltTHh1b2Uxd1Arc3BWYklYblJPK2pTREJHTUE0RwpBMVVkRHdFQi93UUVBd0lGb0RBVEJnTlZIU1VFRERBS0JnZ3JCZ0VGQlFjREFqQWZCZ05WSFNNRUdEQVdnQlRSCnRWWS9PNEx0SCthcHh2RVBUSGZxYmZnMzFUQUtCZ2dxaGtqT1BRUURBZ05JQURCRkFpQXRKQnFWRDRzTW9hUHAKSG5sYnhicHozdm9vaGQzdUJPQ2djQ1NXdDU2Q2xRSWhBT2VucnBHTWVxcUNObkZ0c2NDYTE2NUprVjQzTW5CQwpOQzR5Q1pDRXZzSHoKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+        client-key-data: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUdhYlZ5YTVvckxXZWYyS2Jud252RnRVZzNkVHJkQmhPY1BXVVZRSjB2NnVvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFNHAzWFp2QXcxS0U4Vm9sYXdUcFhlOXlEL2pWWGhhR2hYWkNRdXhHKzVDcDZvd1Fnak96UgowK056dXhPNWo0L2xjaVl2RzZoN1hBLzZ5bFZzaGVkRTd3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+    contexts:
+    - context:
+        cluster: mingyang
+        namespace: default
+        user: admin@mingyang
+      name: admin@mingyang
+    current-context: admin@mingyang
+ddi:
+  dnsClusterNetworkIp4ServiceAddress: 172.16.102.240
+  dnsClusterNetworkIp6ServiceAddress: 2408:8631:c02:ffa2::240
+  dhcp4ClusterNetworkIp4ServiceAddress: 172.16.102.241
+  dhcp6ClusterNetworkIp6ServiceAddress: 2408:8631:c02:ffa2::241
+cncpControllerManager:
+  # cncpControllerManager必填、选填参数说明：以下均为选填参数。
+  imagePullPolicy: "IfNotPresent"
+  resources:
+    cpuLimit: 1000m
+    memoryLimit: 8Gi
+cncpAPIServer:
+  # cncpAPIServer必填、选填参数说明：以下均为选填参数。
+  imagePullPolicy: "IfNotPresent"
+  resources:
+    cpuLimit: 1000m
+    memoryLimit: 4Gi
+cncpDashboard:
+  # cncpDashboard必填、选填参数说明：以下均为选填参数。
+  imagePullPolicy: "IfNotPresent"
+  resources:
+    cpuLimit: 500m
+    memoryLimit: 2Gi
+cncpApplicationManager:
+  # cncpApplicationManager必填、选填参数说明：以下均为选填参数。
+  imagePullPolicy: "IfNotPresent"
+  resources:
+    cpuLimit: 1000m
+    memoryLimit: 4Gi
+redis: {}

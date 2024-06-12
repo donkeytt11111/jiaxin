@@ -1,0 +1,160 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: devices.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+    - network
+    kind: Device
+    listKind: DeviceList
+    plural: devices
+    singular: device
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              name:
+                type: string
+              alias:
+                type: string
+              deviceType:
+                type: string
+              model:
+                type: string
+              mark:
+                type: string
+              version:
+                type: string
+              serialNumber:
+                type: string
+              mainDeadline:
+                type: string
+              supplyInfo:
+                type: string
+              mainStaff:
+                type: string
+              changeInfo:
+                type: string
+              purchaseInfo:
+                type: string
+              snmpInfo:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  port:
+                    type: integer
+                  community:
+                    type: string
+                  limitSubnet:
+                    type: string
+                  username:  
+                    type: string
+                  identAuthAlgorithm:
+                    type: string  
+                  identAuthPassword:
+                    type: string
+                  dataEncryAlgorithm:
+                    type: string
+                  dataEncryPassword:
+                    type: string
+              httpsPort:
+                type: integer
+              managementAddr:
+                type: string
+              username:
+                type: string
+              password:
+                type: string
+              sshPort:
+                type: integer
+              certificate:
+                type: string
+              systemDate:
+                type: string
+              systemTime:
+                type: string
+              syncNPT:
+                type: object
+                properties:
+                  server:
+                    type: string
+                  enable:
+                    type: boolean
+              ifList:
+                type: array
+                items: 
+                  type: object
+                  properties:
+                    ifType: 
+                      type: string
+                    ifName:
+                      type: string
+              logConfig:
+                type: object
+                properties: 
+                  sourceAddr:
+                    type: string
+                  sourcePort:
+                    type: integer
+                  operLogOutputAddr:
+                    type: string
+                  operLogOutputPort:
+                    type: integer
+                  sysLogOutputAddr:
+                    type: string
+                  sysLogOutputPort:
+                    type: integer
+              srv6Config:
+                type: object
+                properties:
+                  srv6SourAddr:
+                    type: string
+                  locatorName:
+                    type: string
+                  locatorPrefix:
+                    type: string
+                  addrSpace:
+                    type: string
+            required:
+            - name
+            - mark
+          status:
+            description: DeviceStatus defines the observed state of Device                   
+            type: object
+            properties:
+              deviceState:
+                type: string
+              manageState:
+                type: boolean   
+              httpsState:
+                type: boolean
+              sshState:
+                type: boolean
+              alarmState:
+                type: string       
+        required:
+        - spec
+    served: true
+    storage: true
+    subresources: {}

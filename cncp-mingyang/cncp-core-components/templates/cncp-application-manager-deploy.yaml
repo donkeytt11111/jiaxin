@@ -1,0 +1,137 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cncp-application-manager
+  namespace: cncp-system
+data:
+  application-prod.yaml: |-
+    server:
+      port: 8088
+      tomcat:
+        threads:
+          min-spare: 9
+          max: 200
+    feign:
+      httpclient:
+        enabled: false
+        max-connections: 200
+        max-connections-per-route: 50
+      okhttp:
+        enabled: true
+      compression:
+        request:
+          enabled: true
+          mime-types: text/xml,application/xml,application/json
+          min-request-size: 1024
+        response:
+          enabled: true
+      server:
+        config:
+          netbox:
+            url: http://netbox.kube-system.svc:80/api
+            token: 0123456789abcdef0123456789abcdef01234567
+    logging:
+      pattern:
+        console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint}
+                  %clr(%5p)
+                  %clr(${PID}){magenta}
+                  %clr(---){faint}
+                  %clr([%11.11t]){faint}
+                  %clr(%36.36logger{36}){cyan}
+                  %clr(:){faint}
+                  %m%n%wEx"
+      level:
+        root: INFO
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: cncp-application-manager
+  namespace: cncp-system
+spec:
+  ports:
+  - protocol: TCP
+    port: 8088
+    targetPort: 8088
+    nodePort: 32005
+  selector:
+    cncp-component: cncp-application-manager
+  type: NodePort
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: cncp-application-manager
+  namespace: cncp-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: cncp-application-manager
+  template:
+    metadata:
+      labels:
+        cncp-component: cncp-application-manager
+    spec:
+      volumes:
+      - name: config
+        configMap:
+          name: cncp-application-manager
+      containers:
+      - name: manager
+        image: mingyangtech.com.cn/mingyang/cncp-application-manager:1.7.1
+        {{- if .Values.cncpApplicationManager.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.cncpApplicationManager.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.cncpApplicationManager.resources.cpuLimit }}
+            cpu: {{ .Values.cncpApplicationManager.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+            {{- if .Values.cncpApplicationManager.resources.memoryLimit }}
+            memory: {{ .Values.cncpApplicationManager.resources.memoryLimit }}
+            {{- else }}
+            memory: 4Gi
+            {{- end }}
+        volumeMounts:
+        - name: config
+          mountPath: /opt/config/application-prod.yaml
+          subPath: application-prod.yaml
+        securityContext:
+          privileged: true
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: cncp-component
+                  operator: In
+                  values:
+                  - netbox
+              namespaces:
+              - kube-system
+              - cncp-system
+              - cncp-production
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+  strategy:
+    type: Recreate

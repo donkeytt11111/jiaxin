@@ -1,0 +1,156 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  #名称必须与下面的spec字段匹配，格式为:<plural>.<group>
+  name: nat64s.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: Nat64
+    listKind: Nat64List
+    # URL中使用的复数名称: /apis/<group>/<version>/<plural>
+    plural: nat64s
+    # 在CLI(shell界面输入的参数)上用作别名并用于显示的单数名称
+    singular: nat64
+
+  # 指定crd资源作用范围在命名空间或集群
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.name
+          name: name
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: nat64 is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Nat64Spec defines the desired state of nat64
+              properties:
+                nat64Interfaces:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: 'Interface name (logical)'
+                      type:
+                        type: string
+                        enum: ["IPV6_INSIDE","IPV4_OUTSIDE"]
+                        description: 'Interface type'
+                nat64IPv6Prefix:
+                  description: 'IPv4-Embedded IPv6 Address Prefix used for NAT64.If no prefix is configured (at all or for a given VRF), then the well-known prefix (64:ff9b::/96) is used.'
+                  type: object
+                  properties:
+                    vrfId:
+                      type: integer
+                      description: 'VRF id of tenant.At most one IPv6 prefix can be configured for a given VRF (that"s why VRF is part of the key but prefix is not).Non-zero (and not all-ones) VRF.'
+                    prefix:
+                      type: string
+                      description: 'NAT64 prefix in the <IPv6-Address>/<IPv6-Prefix> format.'
+                nat64AddressPool:
+                  description: 'Nat44AddressPool defines an address pool used for NAT64.'
+                  type: object
+                  properties:
+                    vrfId:
+                      type: integer
+                      description: 'VRF id of tenant, 0xFFFFFFFF means independent of VRF.Non-zero (and not all-ones) VRF.'
+                    firstIp:
+                      type: string
+                      description: 'First IP address of the pool.'
+                    lastIp:
+                      type: string
+                      description: 'Last IP address of the pool. Should be higher than first_ip or empty.'
+                    subnet:
+                      type: string
+                    mark:
+                      type: integer
+                    portStart:
+                      type: integer
+                    portEnd:
+                      type: integer
+                    sourceSubnet:
+                      type: string
+                    protocol:
+                      type: string
+                nat64StaticBIBs:
+                  description: 'Static NAT64 binding allowing IPv4 host from the outside to access IPv6 host from the inside.'
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      vrfId:
+                        type: integer
+                        description: 'VRF (table) ID. Non-zero VRF '
+                      insideIpv6Address:
+                        type: string
+                        description: 'IPv6 host from the inside/local network.'
+                      insidePort:
+                        type: integer
+                        description: 'Inside port number (of the IPv6 host).'
+                      outsideIpv4Address:
+                        type: string
+                        description: 'IPv4 host from the outside/external network.'
+                      outsidePort:
+                        type: integer
+                        description: 'Outside port number (of the IPv4 host).'
+                      protocol:
+                        type: string
+                        description: 'Protocol to which the binding applies.'
+                        enum: ["TCP","UDP","ICMP"]
+                ipv4AddressPool:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      vrfId:
+                        type: integer
+                      firstIp:
+                        type: string
+                      lastIp:
+                        type: string
+                      subnet:
+                        type: string
+                      mark:
+                        type: integer
+                      portStart:
+                        type: integer
+                      portEnd:
+                        type: integer
+                      sourceSubnet:
+                        type: string
+                      protocol:
+                        type: string
+              required:
+                - nat64Interfaces
+                - nat64IPv6Prefix
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

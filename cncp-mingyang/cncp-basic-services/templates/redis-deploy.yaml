@@ -1,0 +1,167 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis
+  namespace: cncp-system
+data:
+  redis.conf: |-
+    dir /data
+    bind 0.0.0.0
+    port 6379
+    appendonly yes
+    protected-mode no
+    {{- if .Values.redis.password }}
+    requirepass {{ .Values.redis.password }}
+    {{- else }}
+    requirepass Passw0rd@MY
+    {{- end }}
+    pidfile /data/redis-6379.pid
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis
+  namespace: cncp-system
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      {{- if .Values.redis.resources.storageRequest }}
+      storage: {{ .Values.redis.resources.storageRequest }}
+      {{- else }}
+      storage: 10Gi
+      {{- end }}
+  storageClassName: openebs-sc
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis
+  namespace: cncp-system
+spec:
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379
+    nodePort: 32001
+  selector:
+    cncp-component: redis
+  type: NodePort
+  {{- if .Values.global.dualStackSupport }}
+  ipFamilies:
+  - IPv4
+  - IPv6
+  ipFamilyPolicy: RequireDualStack
+  {{- end }}
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: redis
+  namespace: cncp-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: redis
+  template:
+    metadata:
+      labels:
+        cncp-component: redis
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: config
+        configMap:
+          name: redis
+      - name: storage
+        persistentVolumeClaim:
+          claimName: redis
+      initContainers:
+      - name: init
+        image: mingyangtech.com.cn/busybox:1.34.1
+        imagePullPolicy: IfNotPresent
+        command:
+        - "sh"
+        - "-c"
+        # - "echo 2048 > /proc/sys/net/core/somaxconn && echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+        - "echo 2048 > /proc/sys/net/core/somaxconn"
+        volumeMounts:
+        - name: sys
+          mountPath: /sys
+        securityContext:
+          privileged: true
+          runAsUser: 0
+      containers:
+      - name: redis
+        image: mingyangtech.com.cn/redis:7.0.10
+        imagePullPolicy: IfNotPresent
+        command:
+        - "sh"
+        - "-c"
+        - "redis-server /etc/redis/redis.conf"
+        ports:
+        - containerPort: 6379
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.redis.resources.cpuLimit }}
+            cpu: {{ .Values.redis.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+            {{- if .Values.redis.resources.memoryLimit }}
+            memory: {{ .Values.redis.resources.memoryLimit }}
+            {{- else }}
+            memory: 4Gi
+            {{- end }}
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 300
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /etc/redis/redis.conf
+          subPath: redis.conf
+        - name: storage
+          mountPath: /data
+          subPath: data
+        securityContext:
+          privileged: true
+      restartPolicy: Always
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule

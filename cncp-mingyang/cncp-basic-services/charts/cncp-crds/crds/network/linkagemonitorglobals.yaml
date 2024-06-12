@@ -1,0 +1,74 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: linkagemonitorglobals.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: LinkageMonitorGlobal
+    listKind: LinkageMonitorGlobalList
+    plural: linkagemonitorglobals
+    singular: linkagemonitorglobal 
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: LinkageMonitorGlobal is the Schema for the LinkageMonitorGlobals API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: LinkageMonitorGlobalspec defines the desired state of LinkageMonitorGlobal
+              properties:
+                sendMail:
+                  type: string
+                monitorFreq:
+                  type: integer
+                triggerNum:
+                  type: integer
+                deliverdUser:
+                  type: string
+                deliverdPass:
+                  type: string
+                deliverdHost:
+                  type: string
+                deliverdPort:
+                  type: integer
+                subject:
+                  type: string
+                nickname:
+                  type: string
+                alarmFreq:
+                  type: integer
+                formatMail:
+                  type: string
+              required:
+              - sendMail
+              type: object
+          required:
+          - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

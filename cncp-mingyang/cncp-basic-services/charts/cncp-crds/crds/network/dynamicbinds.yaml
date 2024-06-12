@@ -1,0 +1,105 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: dynamicbinds.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: DynamicBind
+    listKind: DynamicBindList
+    plural: dynamicbinds
+    singular: dynamicbind
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.ipAddress
+          name: ipAddress
+          type: string
+        - jsonPath: .spec.protocolType
+          name: protocolType
+          type: string
+        - jsonPath: .spec.vrf
+          name: vrf
+          type: string
+        - jsonPath: .spec.tenant
+          name: tenant
+          type: string
+        - jsonPath: .spec.allocationState
+          name: allocationState
+          type: string
+        - jsonPath: .spec.dns
+          name: dns
+          type: string
+        - jsonPath: .spec.description
+          name: description
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: DynamicBind is the Schema for the ipamipaddresses API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: DynamicBindSpec defines the desired state of DynamicBind
+              properties:
+                ipAddress:
+                  type: string
+                protocolType:
+                  type: string
+                vrf:
+                  type: string
+                tenant:
+                  type: string
+                allocationState:
+                  type: string
+                dns:
+                  type: string
+                description:
+                  type: string
+                mac:
+                  type: string
+                duid:
+                  type: string
+                iaid:
+                  type: string
+                source:
+                  type: string
+                hostname:
+                  type: string
+                clientId:
+                  type: string
+              required:
+                - ipAddress
+                - protocolType
+              type: object
+            status:
+              properties:
+                state:
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: { }
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: [ ]
+  storedVersions: [ ]
+

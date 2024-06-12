@@ -1,0 +1,28 @@
+{{- if .Values.metalLB.ipAddressPool }}
+---
+kind: IPAddressPool
+apiVersion: metallb.io/v1beta1
+metadata:
+  name: global
+  namespace: metallb-system
+  annotations:
+    mingyangtech.com.cn/metallb-address-pool-type: Business
+spec:
+  addresses:
+  {{- range .Values.metalLB.ipAddressPool }}
+  - {{ . }}
+  {{- end }}
+
+---
+kind: L2Advertisement
+apiVersion: metallb.io/v1beta1
+metadata:
+  name: global
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - global
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/os: linux
+{{- end }}

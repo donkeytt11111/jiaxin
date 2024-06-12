@@ -1,0 +1,212 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cncp
+  namespace: cncp-system
+data:
+  kubeConfig: {{ .Values.cluster.kubeConfig | quote }}
+  cncp-config.yaml: |-
+    clusterPlatform:
+      underlyingOS: Talos
+    serverRun:
+      securePort: 16443
+      tlsKeyFile: /system/secrets/kubernetes/kube-apiserver/apiserver.key
+      tlsCertFile: /system/secrets/kubernetes/kube-apiserver/apiserver.crt
+    redis:
+      host: endpoint
+      port: 32001
+      password: Passw0rd@MY
+      db: 0
+    etcd:
+      endpoints:
+      - https://127.0.0.1:2379
+      keyFile: /system/secrets/etcd/server.key
+      certFile: /system/secrets/etcd/server.crt
+      trustedCAFile: /system/secrets/etcd/ca.crt
+    monitoring:
+      prometheus:
+        endpoint: http://endpoint:30200
+    proxyAPI:
+      dashboard:
+        scheme: http
+        host: endpoint:32000
+      applicationManager:
+        scheme: http
+        host: endpoint:32005
+    authentication:
+      sessionEffectiveTime: 30m0s
+      authenticateRateLimiterMaxTries: 5
+      authenticateRateLimiterDuration: 10m0s
+      maximumClockSkew: 10s
+      loginHistoryRetentionPeriod: 168h
+      userWhitelist:
+      - admin
+      - admin-mytech
+      multipleLogin: True
+      jwtSecret: "SYSjvCS1gNvWZ67G9ORVXJe0u7mNdOQ4"
+      oauthOption:
+        accessTokenMaxAge: 0
+      kubectlImage: kubernetes/kubectl:v1.20.0
+    nfsServer:
+      sshServerOption:
+        host: 172.16.102.10
+        port: 22
+        user: root
+        password: Passw0rd@MY
+      storageRootDir: /data/nfs-storage
+    dhcp:
+    - serverName: dhcp4
+      serverType: IPv4
+      {{- if .Values.ddi.dhcp4ClusterNetworkIp4ServiceAddress }}
+      serverIp: {{ .Values.ddi.dhcp4ClusterNetworkIp4ServiceAddress }}
+      serverAPIPrefix: http://{{ .Values.ddi.dhcp4ClusterNetworkIp4ServiceAddress }}:8000
+      {{- else }}
+      serverIp: 10.1.13.211
+      serverAPIPrefix: http://10.1.13.211:8000
+      {{- end }}
+      serviceInterface: eth0
+      database:
+        type: postgresql
+        host: postgres.cncp-system
+        port: 5432
+        name: kea
+        user: kea
+        password: Passw0rd@MY
+      deployInfo:
+        kind: DaemonSet
+        name: dhcp4
+        namespace: cncp-production
+      nfsStoragePath: /data/nfs-storage/dhcp4
+    - serverName: dhcp6
+      serverType: IPv6
+      {{- if .Values.ddi.dhcp6ClusterNetworkIp6ServiceAddress }}
+      serverIp: {{ .Values.ddi.dhcp6ClusterNetworkIp6ServiceAddress }}
+      serverAPIPrefix: http://[{{ .Values.ddi.dhcp6ClusterNetworkIp6ServiceAddress }}]:8000
+      {{- else }}
+      serverIp: 2001:DA8:9002:C400::1000
+      serverAPIPrefix: http://[2001:DA8:9002:C400::1000]:8000
+      {{- end }}
+      serviceInterface: eth0
+      database:
+        type: postgresql
+        host: postgres.cncp-system
+        port: 5432
+        name: kea
+        user: kea
+        password: Passw0rd@MY
+      deployInfo:
+        kind: DaemonSet
+        name: dhcp6
+        namespace: cncp-production
+      nfsStoragePath: /data/nfs-storage/dhcp6
+    dns:
+    - serverName: dnsserver
+      serverIps:
+      - type: IPv4
+        {{- if .Values.ddi.dnsClusterNetworkIp4ServiceAddress }}
+        ip: {{ .Values.ddi.dnsClusterNetworkIp4ServiceAddress }}
+        {{- else }}
+        ip: 10.1.13.211
+        {{- end }}
+      - type: IPv6
+        {{- if .Values.ddi.dnsClusterNetworkIp6ServiceAddress }}
+        ip: {{ .Values.ddi.dnsClusterNetworkIp6ServiceAddress }}
+        {{- else }}
+        ip: 2001:DA8:9002:C400::1000
+        {{- end }}
+      serverPort: 53
+      workMode: Authoritative
+      rndcOption:
+        sshServerOption:
+          #host: {{ .Values.cluster.controlPlaneVIP }}
+          #port: 32022
+          host: tools.cncp-system
+          port: 22
+          user: root
+          password: Passw0rd@MY
+      deployInfo:
+        kind: Deployment
+        name: dns
+        namespace: cncp-production
+        ownedProduct: DDI
+    - serverName: dns64
+      serverIps:
+      - type: IPv4
+        ip: 10.89.2.102
+      - type: IPv6
+        ip: fd10:8902::42
+      nfsOption:
+        sshServerOption:
+          host: 172.16.102.10
+          port: 22
+          user: root
+          password: Passw0rd@MY
+        storagePath: /data/nfs-storage/dns64
+      rndcOption:
+        sshServerOption:
+          #host: 172.16.102.10
+          #port: 22
+          host: tools.cncp-system
+          port: 22
+          user: root
+          password: Passw0rd@MY
+        dnsServerHost: 10.89.2.102
+        dnsServerPort: 953
+      deployInfo:
+        kind: Deployment
+        name: dns64
+        namespace: cncp-production
+        ownedProduct: XYJH
+    nginx:
+      sshServerOption:
+        host: endpoint
+        port: 32004
+        user: root
+        password: Passw0rd@MY
+      storagePath: ""
+    production:
+      netBox:
+      - namespace: cncp-production
+        scheme: http
+        endpoint: endpoint:32003
+        superUserAPIToken: 0123456789abcdef0123456789abcdef01234567
+      #es:
+        #endpoint: http://{{ .Values.cluster.controlPlaneVIP }}:30511
+        #indexConfig:
+        #- indexType: cncp
+        #  indexPrefix: /cncp-*/_search
+      opensearch:
+        username: admin
+        password: admin
+        #endpoint: http://{{ .Values.cluster.controlPlaneVIP }}:30511
+        endpoint: http://endpoint:30511
+        indexConfig:
+        - indexType: cncp
+          indexPrefix: /cncp-log/_search    
+      xyjh:
+        serviceDeployInfos:
+        - serviceName: DNS64
+          kind: Deployment
+          name: dns64
+          namespace: cncp-production
+        - serviceName: Nginx
+          kind: DaemonSet
+          name: nginx
+          namespace: cncp-production
+        - serviceName: NAT64
+          kind: Deployment
+          name: jool-nat
+          namespace: cncp-production
+        - serviceName: SIIT
+          kind: Deployment
+          name: jool-siit
+          namespace: cncp-production
+    cron:
+      normalScheduleCycle: 300
+      abnormalScheduleCycle: 60
+      retryCount: 3
+    historicalRecord:
+      insertPolicy: size
+      sizeLimit: 10240
+      timeLimit: 7

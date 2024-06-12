@@ -1,0 +1,197 @@
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: kubernetes-dashboard-csrf
+  namespace: cncp-system
+type: Opaque
+data:
+  csrf: ""
+
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: kubernetes-dashboard
+  namespace: cncp-system
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dashboard
+  namespace: cncp-system
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9090
+    nodePort: 32000
+  selector:
+    cncp-component: kubernetes-dashboard
+  type: NodePort
+  {{- if .Values.global.dualStackSupport }}
+  ipFamilies:
+  - IPv4
+  - IPv6
+  ipFamilyPolicy: RequireDualStack
+  {{- end }}
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dashboard-admin
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: cncp-system
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    cncp-component: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: cncp-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      cncp-component: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        cncp-component: kubernetes-dashboard
+    spec:
+      containers:
+        - name: kubernetes-dashboard
+          image: mingyangtech.com.cn/kubernetesui/dashboard:v2.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          args:
+            #- --auto-generate-certificates
+            - --namespace=cncp-system
+            # Uncomment the following line to manually specify Kubernetes API server Host
+            # If not specified, Dashboard will attempt to auto discover the API server and connect
+            # to it. Uncomment only if the default does not work.
+            # - --apiserver-host=http://my-address:port
+          resources:
+            requests:
+              cpu: 10m
+              memory: 40Mi
+            limits:
+              cpu: 500m
+              memory: 2Gi
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+            - mountPath: /tmp
+              name: tmp-volume
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 9090
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 1001
+            runAsGroup: 2001
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: tmp-volume
+          emptyDir: {}
+      serviceAccountName: kubernetes-dashboard
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dashboard-metrics-scraper
+  namespace: cncp-system
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+  selector:
+    k8s-app: dashboard-metrics-scraper
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: dashboard-metrics-scraper
+  namespace: cncp-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: dashboard-metrics-scraper
+  template:
+    metadata:
+      labels:
+        k8s-app: dashboard-metrics-scraper
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dashboard-metrics-scraper
+          image: mingyangtech.com.cn/kubernetesui/metrics-scraper:v1.0.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          volumeMounts:
+          - name: localtime
+            mountPath: /etc/localtime
+          - mountPath: /tmp
+            name: tmp-volume
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 1001
+            runAsGroup: 2001
+      serviceAccountName: kubernetes-dashboard
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: tmp-volume
+          emptyDir: {}

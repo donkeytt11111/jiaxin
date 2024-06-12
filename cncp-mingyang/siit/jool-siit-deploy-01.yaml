@@ -1,0 +1,113 @@
+---
+kind: NetworkAttachmentDefinition
+apiVersion: k8s.cni.cncf.io/v1
+metadata:
+  name: jool-siit01-ens1
+  namespace: cncp-production
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "macvlan",
+      "type": "macvlan",
+      "master": "enp25s0f1",
+      "mode": "bridge",
+      "ipam": {
+        "type": "static",
+        "addresses": [
+          { "address": "172.16.201.51/24", "gateway": "172.16.201.1" }
+        ]
+      }
+    }
+
+---
+kind: NetworkAttachmentDefinition
+apiVersion: k8s.cni.cncf.io/v1
+metadata:
+  name: jool-siit01-ens2
+  namespace: cncp-production
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "macvlan2",
+      "type": "macvlan",
+      "master": "enp25s0f0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "static",
+        "addresses": [
+          { "address": "2408:8631:c02:ffb1::51/64", "gateway": "2408:8631:c02:ffb1::1" }
+        ]
+      }
+    }
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: jool-siit-01
+  namespace: cncp-production
+  annotations:
+    configmap.reloader.stakater.com/reload: "jool-siit"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: jool-siit
+  template:
+    metadata:
+      labels:
+        cncp-component: jool-siit
+        logging: "true"
+      annotations:
+        k8s.v1.cni.cncf.io/networks: cncp-production/jool-siit01-ens1@ens1,cncp-production/jool-siit01-ens2@ens2
+        network.mingyangtech.com.cn/auto-recreate: "0"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: jool-siit
+      containers:
+      - name: jool-siit
+        image: mingyangtech.com.cn/mingyang/jool:4.1.10-r1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: IPV4_DEFAULT_GATEWAY
+          value: 172.16.201.1
+        - name: IPV6_DEFAULT_GATEWAY
+          value: 2408:8631:c02:ffb1::1
+        livenessProbe:
+          exec:
+            command:
+             - /bin/sh 
+             - -c
+             - "ping -6 -c 1 $IPV6_DEFAULT_GATEWAY || exit 1"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /etc/resolv.conf
+          subPath: resolv.conf
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: entrypoint.sh
+        - name: config
+          mountPath: /etc/jool/jool_siit.conf
+          subPath: jool_siit.conf
+        - name: config
+          mountPath: /usr/local/bin/route.sh
+          subPath: route.sh     
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/hostname: cncp-ms-01
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  

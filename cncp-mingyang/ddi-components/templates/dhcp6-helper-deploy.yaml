@@ -1,0 +1,74 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: dhcp6-helper
+  namespace: cncp-production
+  annotations:
+    configmap.reloader.stakater.com/reload: "dhcp6"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: dhcp6-helper
+  template:
+    metadata:
+      labels:
+        cncp-component: dhcp6-helper
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: dhcp6
+          defaultMode: 511
+      - name: storage
+        persistentVolumeClaim:
+          claimName: dhcp6
+      containers:
+      - name: helper
+        image: mingyangtech.com.cn/mingyang/centos:v7.9.2009
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            cpu: 500m
+            memory: 2Gi
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /etc/kea/kea-dhcp6.conf
+          subPath: kea-dhcp6.conf
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: helper-entrypoint.sh
+        - name: storage
+          mountPath: /usr/local/etc/kea
+          subPath: dhcp6/usr/local/etc/kea
+        securityContext:
+          privileged: true
+      restartPolicy: Always
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - cncp-ms-01
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+  strategy:
+    type: Recreate

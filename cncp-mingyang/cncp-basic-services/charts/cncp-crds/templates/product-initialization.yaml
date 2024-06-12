@@ -1,0 +1,54 @@
+---
+kind: ProductInformation
+apiVersion: system.mingyangtech.com.cn/v1
+metadata:
+  name: ddi
+  annotations:
+    mingyangtech.com.cn/product-belonged: DDI
+spec:
+  productName: "明阳DDI集成服务平台V2.0"
+  productModel: "MYCNP-SV-P4"
+  softwareVersion: "v2.3.1"
+
+---
+kind: ProductInformation
+apiVersion: system.mingyangtech.com.cn/v1
+metadata:
+  name: xyjh
+  annotations:
+    mingyangtech.com.cn/product-belonged: XYJH
+spec:
+  productName: "明阳IPv4/IPv6协议交换平台V2.0"
+  productModel: "MYCNP-SV-P4"
+  softwareVersion: "v2.3.1"
+
+---
+kind: LoginSecurityPolicy
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: global
+spec:
+  basicSecurityPolicy:
+    sessionEffectiveTime: 30
+  userLockPolicy:
+    userLockThreshold: 5
+    userLockTime: 10
+
+---
+kind: DnsView
+apiVersion: network.mingyangtech.com.cn/v1
+metadata:
+  name: default
+  namespace: cncp-production
+  annotations:
+    network.mingyangtech.com.cn/dns-view-alias: "默认视图"
+spec:
+  viewName: default
+  client:
+    subnets: [
+      {
+        type: IPv4,
+        subnet: any
+      }
+    ]
+  recursion: true

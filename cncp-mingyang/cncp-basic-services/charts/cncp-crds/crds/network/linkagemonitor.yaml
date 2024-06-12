@@ -1,0 +1,112 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: linkagemonitors.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: LinkageMonitor
+    listKind: LinkageMonitorList
+    plural: linkagemonitors
+    singular: linkagemonitor
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.sendMail
+          name: sendMail
+          type: string
+        - jsonPath: .spec.startTime
+          name: startTime
+          type: string
+        - jsonPath: .spec.endTime
+          name: endTime
+          type: string
+        - jsonPath: .spec.appName
+          name: appName
+          type: string
+        - jsonPath: .spec.pubDoName
+          name: pubDoName
+          type: string
+        - jsonPath: .spec.monitorFreq
+          name: monitorFreq
+          type: integer
+        - jsonPath: .spec.triggerNum
+          name: triggerNum
+          type: integer
+        - jsonPath: .spec.appGroup
+          name: appGroup
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: LinkageMonitor is the Schema for the LinkageMonitors API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: LinkageMonitorspec defines the desired state of LinkageMonitor
+              properties:
+                sendMail:
+                  type: string
+                startTime:
+                  type: string
+                endTime:
+                  type: string
+                appName:
+                  type: string
+                pubDoName:
+                  type: string
+                monitorFreq:
+                  type: integer
+                triggerNum:
+                  type: integer
+                appGroup:
+                  type: string
+                backaddrweight:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      backaddr:
+                        type: string
+                      backweight:
+                        type: string
+              required:
+                - appName
+              type: object
+            status:
+              description: UserStatus defines the observed state of User
+              properties:
+                state:
+                  type: string
+                continuedNormal:
+                  type: integer
+                persistentException:
+                  type: integer
+                vistiMark:
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

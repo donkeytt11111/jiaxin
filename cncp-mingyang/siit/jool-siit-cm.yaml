@@ -1,0 +1,39 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata: 
+  name: jool-siit
+  namespace: cncp-production
+  labels:
+    cncp-component: jool-siit
+data:
+  resolv.conf: |
+    nameserver 114.114.114.114
+    nameserver 8.8.8.8
+    nameserver 2400:3200::1
+    nameserver 2400:3200:baba::1
+  copylog.sh: |
+    #!/bin/sh
+    while [ true ]
+    do
+        dmesg - | grep Jool 
+        sleep 10;
+    done
+  entrypoint.sh: |
+    #!/bin/sh
+    sysctl -w net.ipv6.conf.all.forwarding=1
+    sysctl -w net.ipv4.conf.all.forwarding=1
+    ip route del default
+    ip route add default via ${IPV4_DEFAULT_GATEWAY}
+    ip -6 route del default
+    ip -6 route add default via ${IPV6_DEFAULT_GATEWAY}
+    jool_siit file handle /etc/jool/jool_siit.conf
+    /bin/sh /usr/local/bin/route.sh
+    tail -f /dev/null
+  jool_siit.conf: |
+    {
+      "instance": "mingyang-siit",
+      "framework": "netfilter"
+    }
+  route.sh: |  
+    #!/bin/sh

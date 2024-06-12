@@ -1,0 +1,358 @@
+{{- if and .Values.dhcp6.enabled (and .Values.dhcp6.networkType (eq .Values.dhcp6.networkType "Cluster")) }}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dhcp6
+  namespace: cncp-production
+data:
+  keactrl.conf: |-
+    {
+      #!/bin/sh
+      prefix="/usr/local"
+      kea_dhcp4_config_file="${prefix}/etc/kea/kea-dhcp4.conf"
+      kea_dhcp6_config_file="${prefix}/etc/kea-dhcp66.conf" 
+      kea_dhcp_ddns_config_file="${prefix}/etc/kea/kea-dhcp-ddns.conf"
+      kea_ctrl_agent_config_file="${prefix}/etc/kea/kea-ctrl-agent.conf"
+      kea_netconf_config_file="${prefix}/etc/kea/kea-netconf.conf"
+      exec_prefix="${prefix}"
+      dhcp4_srv="${exec_prefix}/sbin/kea-dhcp4"
+      dhcp6_srv="${exec_prefix}/sbin/kea-dhcp6"
+      dhcp_ddns_srv="${exec_prefix}/sbin/kea-dhcp-ddns"
+      ctrl_agent_srv="${exec_prefix}/sbin/kea-ctrl-agent"
+      netconf_srv="${exec_prefix}/sbin/kea-netconf"
+      dhcp4=no
+      dhcp6=yes
+      dhcp_ddns=yes
+      ctrl_agent=yes
+      netconf=no
+      kea_verbose=no
+    }
+  kea-dhcp6.conf: |-
+    {
+      "Dhcp6": {
+        "interfaces-config": {
+          "interfaces": ["eth0"]
+        },
+        "control-socket": {
+          "socket-type": "unix",
+          "socket-name": "/tmp/kea6-ctrl-socket"
+        },
+        "expired-leases-processing": {
+          "reclaim-timer-wait-time": 10,
+          "flush-reclaimed-timer-wait-time": 25,
+          "hold-reclaimed-time": 3600,
+          "max-reclaim-leases": 100,
+          "max-reclaim-time": 250,
+          "unwarned-reclaim-cycles": 5
+        },
+        "renew-timer": 43200,
+        "rebind-timer": 75600,
+        "valid-lifetime": 86400,
+        "loggers": [
+          {
+            "name": "kea-dhcp6",
+            "output_options": [{"output": "stdout"}],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  kea-dhcp-ddns.conf: |-
+    {
+      "DhcpDdns":{
+        "ip-address": "127.0.0.1",
+        "port": 53001,
+        "control-socket": {
+          "socket-type": "unix",
+          "socket-name": "/tmp/kea-ddns-ctrl-socket"
+        },
+        "reverse-ddns": {},
+        "forward-ddns": {},
+        "loggers": [
+          {
+            "name": "kea-dhcp-ddns",
+            "output_options": [
+              { "output": "stdout" }
+            ],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  kea-ctrl-agent.conf: |-
+    {
+      "Control-agent": {
+        "http-host": "::0",
+        "http-port": 8000,
+        "control-sockets": {
+          "dhcp4": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea4-ctrl-socket"
+          },
+          "dhcp6": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea6-ctrl-socket"
+          },
+          "d2": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea-ddns-ctrl-socket"
+          }
+        },
+        "loggers": [
+          {
+            "name": "kea-ctrl-agent",
+            "output_options": [
+              { "output": "stdout" }
+            ],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  init-entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    DHCP_INIT_PATH="/etc/kea"
+    DHCP_CONFIG_PATH="/usr/local/etc/kea"
+    config_files=(keactrl.conf kea-dhcp6.conf kea-dhcp-ddns.conf kea-ctrl-agent.conf)
+    for file in ${config_files[@]}
+    do
+        if [ ! -f $DHCP_CONFIG_PATH/$file ]; then
+            cp $DHCP_INIT_PATH/$file $DHCP_CONFIG_PATH
+        fi
+    done
+  helper-entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    cp /etc/kea/kea-dhcp6.conf /usr/local/etc/kea/kea-dhcp6.conf
+    tail -f /dev/null
+  monitor.sh: |-
+    #!/usr/bin/env sh
+    log_file="/usr/local/var/log/monitor.log"
+    config_file="/usr/local/etc/kea/kea-dhcp6.conf"
+    ipv6=$(ip -6 addr show dev eth0 | grep -E 'inet6.*global.' | awk '{print $2}' | awk -F "/" '{print $1}')
+    new_interface="eth0/${ipv6}"
+    last_modified=`stat -c %Y $config_file`
+    while true; do
+        if [[ $check_result =~ "DHCPv6 server: inactive" ]]; then
+        cp /usr/local/etc/kea/kea-dhcp6.conf /usr/local/etc/kea-dhcp66.conf
+            if [ -e "${RUNPATH}/kea-dhcp6.kea-dhcp6.pid" ]; then
+                keactrl stop
+                sleep 1
+                rm -f "${RUNPATH}/kea-dhcp6.kea-dhcp6.pid"
+                echo "$(date): remove kea-dhcp6.kea-dhcp6.pid..." >> "$log_file"
+                keactrl start
+            fi
+            if [ -e "/tmp/kea6-ctrl-socket.lock" ]; then
+                keactrl stop
+                sleep 1
+                rm -f "/tmp/kea6-ctrl-socket.lock"
+                echo "$(date): remove kea6-ctrl-socket.lock..." >> "$log_file"
+                keactrl start
+            fi
+        fi
+        current_modified=`stat -c %Y $config_file`
+        if [ "$current_modified" -gt "$last_modified" ]; then
+            cp /usr/local/etc/kea/kea-dhcp6.conf  /usr/local/etc/kea-dhcp66.conf
+            sed -i "s/eth0/eth0\/$ipv6/g" /usr/local/etc/kea-dhcp66.conf
+            last_modified=`stat -c %Y $config_file`
+            keactrl stop
+            keactrl start
+        fi
+        sleep 3
+    done
+  entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    RUNPATH="/usr/local/var/run/kea"
+      #if [ -e "${RUNPATH}/kea-dhcp6.kea-dhcp6.pid" ]; then
+       # rm -f "${RUNPATH}/kea-dhcp6.kea-dhcp6.pid"
+      #fi
+    config_file="/usr/local/etc/kea/kea-dhcp6.conf"
+    ipv6=$(ip -6 addr show dev eth0 | grep -E 'inet6.*global.' | awk '{print $2}' | awk -F "/" '{print $1}')
+    new_interface="eth0/${ipv6}"
+    cp /usr/local/etc/kea/kea-dhcp6.conf  /usr/local/etc/kea-dhcp66.conf
+    if ! grep -q "${new_interface}" /usr/local/etc/kea-dhcp66.conf; then
+            sed -i "s/eth0/eth0\/$ipv6/g" /usr/local/etc/kea-dhcp66.conf
+            keactrl stop
+            keactrl start
+    fi
+    keactrl start -c /usr/local/etc/kea/keactrl.conf
+    /usr/local/bin/monitor.sh
+    tail -f /dev/null
+
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: dhcp6
+spec:
+  capacity:
+    storage: 20Gi
+  nfs:
+    server: endpoint
+    path: /var/local-storage
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: dhcp6storageclass
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: dhcp6
+  namespace: cncp-production
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: dhcp6storageclass
+
+---
+
+{{- if .Values.dhcp6.clusterNetworkIp6ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dhcp6
+  namespace: cncp-production
+spec:
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  - name: dhcp6
+    protocol: UDP
+    port: 547
+    targetPort: 547
+  selector:
+    cncp-component: dhcp6
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dhcp6.clusterNetworkIp6ServiceAddress }}
+  ipFamilies:
+  - IPv6
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+{{- end }}
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: dhcp6
+  namespace: cncp-production
+spec:
+  selector:
+    matchLabels:
+      cncp-component: dhcp6
+  template:
+    metadata:
+      labels:
+        cncp-component: dhcp6
+        logging: "true"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: dhcp6
+          defaultMode: 511
+      - name: storage
+        persistentVolumeClaim:
+          claimName: dhcp6
+      initContainers:
+      - name: init
+        image: mingyangtech.com.cn/mingyang/centos:v7.9.2009
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kea/keactrl.conf
+          subPath: keactrl.conf
+        - name: config
+          mountPath: /etc/kea/kea-dhcp6.conf
+          subPath: kea-dhcp6.conf
+        - name: config
+          mountPath: /etc/kea/kea-dhcp-ddns.conf
+          subPath: kea-dhcp-ddns.conf
+        - name: config
+          mountPath: /etc/kea/kea-ctrl-agent.conf
+          subPath: kea-ctrl-agent.conf
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: init-entrypoint.sh
+        - name: storage
+          mountPath: /usr/local/etc/kea
+          subPath: dhcp6/usr/local/etc/kea
+        securityContext:
+          privileged: true
+      containers:
+      - name: dhcp6
+        {{- if .Values.dhcp6.image }}
+        image: {{ .Values.dhcp6.image }}
+        {{- else }}
+        image: mingyangtech.com.cn/mingyang/cncp-dhcp:v2.1.0
+        {{- end }}
+        {{- if .Values.dhcp6.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.dhcp6.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: dhcp6
+          containerPort: 547
+          protocol: UDP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.dhcp6.resources.cpuLimit }}
+            cpu: {{ .Values.dhcp6.resources.cpuLimit }}
+            {{- else }}
+            cpu: 2000m
+            {{- end }}
+            {{- if .Values.dhcp6.resources.memoryLimit }}
+            memory: {{ .Values.dhcp6.resources.memoryLimit }}
+            {{- else }}
+            memory: 8Gi
+            {{- end }}
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: entrypoint.sh
+        - name: config
+          mountPath: /usr/local/bin/monitor.sh
+          subPath: monitor.sh
+        - name: storage
+          mountPath: /usr/local/etc/kea
+          subPath: dhcp6/usr/local/etc/kea
+        - name: storage
+          mountPath: /usr/local/var/log
+          subPath: dhcp6/usr/local/var/log
+        securityContext:
+          privileged: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+{{- end }}

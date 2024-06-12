@@ -1,0 +1,86 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  #名称必须与下面的spec字段匹配，格式为:<plural>.<group>
+  name: staticbibs.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: StaticBib
+    listKind: StaticBibList
+    # URL中使用的复数名称: /apis/<group>/<version>/<plural>
+    plural: staticbibs
+    # 在CLI(shell界面输入的参数)上用作别名并用于显示的单数名称
+    singular: staticbib
+    
+  # 指定crd资源作用范围在命名空间或集群
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.name
+          name: name
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: staticbib is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: StaticBibSpec defines the desired state of StaticBib
+              properties:
+                name:
+                  type: string
+                  description: 'name'
+                vrfId:
+                  type: integer
+                  description: 'VRF (table) ID. Non-zero VRF '
+                insideIpv6Address: 
+                  type: string
+                  description: 'IPv6 host from the inside/local network.'
+                insidePort:
+                  type: integer
+                  description: 'Inside port number (of the IPv6 host).'
+                outsideIpv4Address:
+                  type: string
+                  description: 'IPv4 host from the outside/external network.'
+                outsidePort:
+                  type: integer
+                  description: 'Outside port number (of the IPv4 host).'
+                protocol:
+                  type: string
+                  description: 'Protocol to which the binding applies.'
+                  enum: ["TCP","UDP","ICMP"]
+              required:
+                - insideIpv6Address
+                - insidePort
+                - outsideIpv4Address
+                - outsidePort
+                - protocol
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

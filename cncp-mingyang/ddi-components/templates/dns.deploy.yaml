@@ -1,0 +1,189 @@
+{{- if and .Values.dns.enabled (and .Values.dns.networkType (eq .Values.dns.networkType "Cluster")) }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dns
+  namespace: cncp-production
+  labels:
+    cncp-component: dns
+data:
+  docker-entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    /usr/sbin/named -g -c /etc/bind/named.conf
+  named.conf: |-
+    options {
+      listen-on port 53 { any; };
+      listen-on-v6 port 53 { any; };
+      directory "/etc/bind";
+      dump-file "/var/named/data/cache_dump.db";
+      statistics-file "/var/named/data/named_stats.txt";
+      memstatistics-file "/var/named/data/named_mem_stats.txt";
+      allow-query { any; };
+      allow-query-cache { any; };
+      allow-new-zones yes;
+      allow-update { any; };
+      pid-file "/run/named/named.pid";
+      allow-recursion { any; };
+      dnssec-validation no;
+      forwarders {
+      };
+    };
+    logging {
+      channel default_log {
+        file "/var/log/bind/default.log";
+        print-time yes;
+        print-category yes;
+        print-severity yes;
+        severity info;
+      };
+      channel query_log {
+        file "/var/log/bind/query.log";
+        print-time iso8601;
+        print-category yes;
+        print-severity yes;
+        severity info;
+      };
+      category queries { query_log; };
+    };
+
+{{- if .Values.dns.clusterNetworkIp6ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dns-ip6
+  namespace: cncp-production
+spec:
+  ports:
+  - name: udp
+    protocol: UDP
+    port: 53
+    targetPort: 53
+  - name: tcp
+    protocol: TCP
+    port: 53
+    targetPort: 53
+  selector:
+    cncp-component: dns
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dns.clusterNetworkIp6ServiceAddress }}
+  ipFamilies:
+  - IPv6
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+{{- end }}
+
+{{- if .Values.dns.clusterNetworkIp4ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dns-ip4
+  namespace: cncp-production
+spec:
+  ports:
+  - name: udp
+    protocol: UDP
+    port: 53
+    targetPort: 53
+  - name: tcp
+    protocol: TCP
+    port: 53
+    targetPort: 53
+  selector:
+    cncp-component: dns
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dns.clusterNetworkIp4ServiceAddress }}
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+{{- end }}
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: dns
+  namespace: cncp-production
+  annotations:
+    configmap.reloader.stakater.com/reload: "dns"
+    network.mingyangtech.com.cn/used-configmap: dns
+  labels:
+    cncp-component: dns
+spec: 
+  selector:
+    matchLabels:
+      cncp-component: dns
+  template:
+    metadata:
+      labels:
+        cncp-component: dns
+        logging: "true"
+      annotations:
+        network.mingyangtech.com.cn/auto-recreate: "0"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: dns
+          defaultMode: 511
+      containers:
+      - name: dns
+        {{- if .Values.dns.image }}
+        image: {{ .Values.dns.image }}
+        {{- else }}
+        image: mingyangtech.com.cn/mingyang/cncp-dns:v2.1.0
+        {{- end }}
+        {{- if .Values.dns.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.dns.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        ports:
+        - containerPort: 53
+          protocol: TCP
+        - containerPort: 53
+          protocol: UDP
+        - containerPort: 953
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.dns.resources.cpuLimit }}
+            cpu: {{ .Values.dns.resources.cpuLimit }}
+            {{- else }}
+            cpu: 2000m
+            {{- end }}
+            {{- if .Values.dns.resources.memoryLimit }}
+            memory: {{ .Values.dns.resources.memoryLimit }}
+            {{- else }}
+            memory: 8Gi
+            {{- end }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /usr/local/bin/docker-entrypoint.sh
+          subPath: docker-entrypoint.sh
+        - name: config
+          mountPath: /etc/bind/named.conf
+          subPath: named.conf
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+{{- end }}

@@ -1,0 +1,192 @@
+{{- if and .Values.dns64.enabled (and .Values.dns64.networkType (eq .Values.dns64.networkType "Cluster")) }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dns64
+  namespace: cncp-production
+  labels:
+    cncp-component: dns64
+data:
+  docker-entrypoint.sh: |
+   #!/usr/bin/env sh
+   /usr/sbin/named -g -c /etc/bind/named.conf
+  named.conf: |
+    options {
+      listen-on port 53 { any; };
+      listen-on-v6 port 53 { any; };
+      directory "/etc/bind";
+      dump-file "/var/named/data/cache_dump.db";
+      statistics-file "/var/named/data/named_stats.txt";
+      memstatistics-file "/var/named/data/named_mem_stats.txt";
+      allow-query { any; };
+      allow-query-cache { any; };
+      allow-new-zones yes;
+      allow-update { any; };
+      pid-file "/run/named/named.pid";
+      allow-recursion { any; };
+      dnssec-validation no;
+      forwarders {
+      };
+    };
+    logging {
+      channel default_log {
+        file "/var/log/bind/default.log";
+        print-time yes;
+        print-category yes;
+        print-severity yes;
+        severity info;
+      };
+      channel query_log {
+        file "/var/log/bind/query.log";
+        print-time iso8601;
+        print-category yes;
+        print-severity yes;
+        severity info;
+      };
+      category queries { query_log; };
+    };
+
+{{- if .Values.dns64.clusterNetworkIp6ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dns64-ip6
+  namespace: cncp-production
+  labels:
+    "network.mingyangtech.com.cn/service-ref": "dns64"
+spec:
+  ports:
+  - name: udp
+    protocol: UDP
+    port: 53
+    targetPort: 53
+  - name: tcp
+    protocol: TCP
+    port: 53
+    targetPort: 53
+  selector:
+    cncp-component: dns64
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dns64.clusterNetworkIp6ServiceAddress }}
+  ipFamilies:
+  - IPv6
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+{{- end }}
+
+{{- if .Values.dns64.clusterNetworkIp4ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dns64-ip4
+  namespace: cncp-production
+  labels:
+    "network.mingyangtech.com.cn/service-ref": "dns64"
+spec:
+  ports:
+  - name: udp
+    protocol: UDP
+    port: 53
+    targetPort: 53
+  - name: tcp
+    protocol: TCP
+    port: 53
+    targetPort: 53
+  selector:
+    cncp-component: dns64
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dns64.clusterNetworkIp4ServiceAddress }}
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+{{- end }}
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: dns64
+  namespace: cncp-production
+  annotations:
+    configmap.reloader.stakater.com/reload: "dns64"
+    network.mingyangtech.com.cn/used-configmap: dns64
+  labels:
+    cncp-component: dns64
+spec:
+  selector:
+    matchLabels:
+      cncp-component: dns64
+  template:
+    metadata:
+      labels:
+        cncp-component: dns64
+        logging: "true"
+      annotations:
+        network.mingyangtech.com.cn/auto-recreate: "0"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: dns64
+          defaultMode: 511
+      containers:
+      - name: dns64
+        {{- if .Values.dns64.image }}
+        image: {{ .Values.dns64.image }}
+        {{- else }}
+        image: mingyangtech.com.cn/mingyang/cncp-dns:v1.0.0
+        {{- end }}
+        {{- if .Values.dns64.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.dns64.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        ports:
+        - containerPort: 53
+          protocol: TCP
+        - containerPort: 53
+          protocol: UDP
+        - containerPort: 953
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.dns64.resources.cpuLimit }}
+            cpu: {{ .Values.dns64.resources.cpuLimit }}
+            {{- else }}
+            cpu: 2000m
+            {{- end }}
+            {{- if .Values.dns64.resources.memoryLimit }}
+            memory: {{ .Values.dns64.resources.memoryLimit }}
+            {{- else }}
+            memory: 8Gi
+            {{- end }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /etc/bind/named.conf
+          subPath: named.conf
+        - name: config
+          mountPath: /usr/local/bin/docker-entrypoint.sh
+          subPath: docker-entrypoint.sh
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+{{- end }}

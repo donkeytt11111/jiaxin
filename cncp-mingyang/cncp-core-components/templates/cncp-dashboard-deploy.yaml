@@ -1,0 +1,192 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cncp-dashboard
+  namespace: cncp-system
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log notice;
+    pid /var/run/nginx.pid;
+    events {
+      worker_connections 1024;
+    }
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for" "$proxy_add_x_forwarded_for"';
+      access_log /var/log/nginx/access.log main;
+      sendfile on;
+      #tcp_nopush on;
+      keepalive_timeout 65;
+      #gzip on;
+      include /etc/nginx/conf.d/*.conf;
+      server {
+        listen 8080;
+        listen [::]:8080;
+        server_name localhost;
+        access_log /var/log/nginx/host.access.log main;
+        error_log /var/log/nginx/error.log error;
+        location / {
+          root /usr/local/nginx/html/;
+          index index.html index.htm;
+        }
+        location /oauth/login {
+            proxy_pass https://cncp-apiserver:443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location /oauth/signin {
+            proxy_pass https://cncp-apiserver:443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location ^~ /capis/ {
+            proxy_pass https://cncp-apiserver:443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location ^~ /tapis/ {
+            proxy_pass http://talos-dashboard.cncp-system:80/;
+        }
+        location ^~ /dashboard/ {
+            proxy_pass https://cncp-apiserver:443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location ^~ /netbox/ {
+            proxy_pass https://cncp-apiserver:443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location ^~ /api/netbox/ {
+            proxy_pass http://cncp-application-manager.cncp-system.svc:8088;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+          root /usr/share/nginx/html;
+        }
+      }
+    }
+  config.js: |
+    module.exports = {
+      target: `https://cncp-apiserver:443`,
+    }
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: cncp-dashboard
+  namespace: cncp-system
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    nodePort: 30001
+  selector:
+    cncp-component: cncp-dashboard
+  ipFamilies:
+  - IPv4
+  - IPv6
+  ipFamilyPolicy: RequireDualStack
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: cncp-dashboard
+  namespace: cncp-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: cncp-dashboard
+  template:
+    metadata:
+      labels:
+        cncp-component: cncp-dashboard
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: cncp-dashboard
+      containers:
+      - name: dashboard
+        {{- if .Values.cncpDashboard.imageName }}
+        image: "{{ .Values.cncpDashboard.imageName }}:{{ .Chart.AppVersion }}"
+        {{- else }}
+        image: mingyangtech.com.cn/mingyang/cncp-dashboard:{{ .Chart.AppVersion }}
+        {{- end }}
+        {{- if .Values.cncpDashboard.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.cncpDashboard.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.cncpDashboard.resources.cpuLimit }}
+            cpu: {{ .Values.cncpDashboard.resources.cpuLimit }}
+            {{- else }}
+            cpu: 500m
+            {{- end }}
+            {{- if .Values.cncpDashboard.resources.memoryLimit }}
+            memory: {{ .Values.cncpDashboard.resources.memoryLimit }}
+            {{- else }}
+            memory: 2Gi
+            {{- end }}
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          subPath: nginx.conf
+          mountPath: /etc/nginx/nginx.conf
+        - name: config
+          subPath: config.js
+          mountPath: /usr/local/nginx/html/config.js
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 5
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - cncp-ms-01
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule

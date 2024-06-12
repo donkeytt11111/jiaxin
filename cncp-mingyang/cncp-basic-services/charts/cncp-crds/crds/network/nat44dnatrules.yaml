@@ -1,0 +1,72 @@
+---
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1
+metadata:
+  name: nat44dnatrules.network.mingyangtech.com.cn
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+    - network
+    kind: Nat44DnatRule
+    listKind: Nat44DnatRuleList
+    plural: nat44dnatrules
+    singular: nat44dnatrule
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              ruleChineseName:
+                type: string
+              destinationIpv4MappingType:
+                description: The mapping type of destination IPv4 address. Supports "One-To-One" and "Many-To-One". Default is One-To-One
+                type: string
+              destinationIpv4Cidr:
+                description: Destination IPv4 address with CIDR format. It may be a host IP or a prefix. For example, "202.64.10.10/32", "202.32.1.0/24"
+                type: string
+              destinationPort:
+                type: integer
+                minimum: 1
+                maximum: 65535
+              protocol:
+                description: Protocol type. Supports "TCP" and "UDP". Default is TCP
+                type: string
+              convertedDestinationIpv4:
+                description: For example, "10.64.10.10/32"
+                type: object
+                properties:
+                  cidr:
+                    type: string
+              convertedDestinationPort:
+                type: integer
+                minimum: 1
+                maximum: 65535
+            required:
+            - ruleChineseName
+        required:
+        - spec
+    served: true
+    storage: true
+    subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

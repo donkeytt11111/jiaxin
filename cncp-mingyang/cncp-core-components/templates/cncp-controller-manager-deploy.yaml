@@ -1,0 +1,95 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: cncp-controller-manager
+  namespace: cncp-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: cncp-controller-manager
+  template:
+    metadata:
+      labels:
+        cncp-component: cncp-controller-manager
+        logging: "true"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: cncp
+      - name: pki
+        hostPath:
+          path: /system/secrets
+          type: DirectoryOrCreate
+      - name: kubelet-root-dir
+        hostPath:
+          path: /var/lib/kubelet
+          type: DirectoryOrCreate
+      containers:
+      - name: controller-manager
+        {{- if .Values.cncpControllerManager.imageName }}
+        image: "{{ .Values.cncpControllerManager.imageName }}:{{ .Chart.AppVersion }}"
+        {{- else }}
+        image: "mingyangtech.com.cn/mingyang/cncp-controller-manager:{{ .Chart.AppVersion }}"
+        {{- end }}
+        {{- if .Values.cncpControllerManager.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.cncpControllerManager.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        command:
+        - "cncp-controller-manager"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.cncpControllerManager.resources.cpuLimit }}
+            cpu: {{ .Values.cncpControllerManager.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+            {{- if .Values.cncpControllerManager.resources.memoryLimit }}
+            memory: {{ .Values.cncpControllerManager.resources.memoryLimit }}
+            {{- else }}
+            memory: 8Gi
+            {{- end }}
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /root/.kube/config
+          subPath: kubeConfig
+        - name: config
+          mountPath: /etc/cncp/cncp-config.yaml
+          subPath: cncp-config.yaml
+        - name: pki
+          mountPath: /system/secrets
+        - name: kubelet-root-dir
+          mountPath: /var/lib/kubelet
+      restartPolicy: Always
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - cncp-ms-02
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+  strategy:
+    type: Recreate

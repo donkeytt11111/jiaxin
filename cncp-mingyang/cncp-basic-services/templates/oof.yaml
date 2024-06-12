@@ -1,0 +1,622 @@
+# Deploy Opensearch
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: "opensearch-cluster-master-pdb"
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/instance: release-name
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-cluster-master-config
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+data:
+  opensearch.yml: |
+    cluster.name: opensearch-cluster
+    network.host: 0.0.0.0
+    plugins:
+      security:
+        ssl:
+          transport:
+            pemcert_filepath: esnode.pem
+            pemkey_filepath: esnode-key.pem
+            pemtrustedcas_filepath: root-ca.pem
+            enforce_hostname_verification: false
+          http:
+            enabled: false
+            pemcert_filepath: esnode.pem
+            pemkey_filepath: esnode-key.pem
+            pemtrustedcas_filepath: root-ca.pem
+        allow_unsafe_democertificates: true
+        allow_default_init_securityindex: true
+        authcz:
+          admin_dn:
+            - CN=kirk,OU=client,O=client,L=test,C=de
+        audit.type: internal_opensearch
+        enable_snapshot_restore_privilege: true
+        check_snapshot_restore_write_privileges: true
+        restapi:
+          roles_enabled: ["all_access", "security_rest_api_access"]
+        system_indices:
+          enabled: true
+          indices:
+            [
+              ".opendistro-alerting-config",
+              ".opendistro-alerting-alert*",
+              ".opendistro-anomaly-results*",
+              ".opendistro-anomaly-detector*",
+              ".opendistro-anomaly-checkpoints",
+              ".opendistro-anomaly-detection-state",
+              ".opendistro-reports-*",
+              ".opendistro-notifications-*",
+              ".opendistro-notebooks",
+              ".opendistro-asynchronous-search-response*",
+            ]
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: opensearch-cluster-master
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+  annotations:
+    {}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+  ports:
+  - name: http
+    protocol: TCP
+    port: 9200
+  - name: transport
+    protocol: TCP
+    port: 9300
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: opensearch-cluster-master-headless
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+  ports:
+  - name: http
+    port: 9200
+  - name: transport
+    port: 9300
+  - name: metrics
+    port: 9600
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: opensearch-cluster-master-out
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+  annotations:
+    {}
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+  ports:
+  - port: 9200
+    nodePort: 30511
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch-cluster-master
+  namespace: cncp-system
+  labels:
+    helm.sh/chart: opensearch-2.13.3
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "2.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: opensearch-cluster-master
+  annotations:
+    majorVersion: "2"
+spec:
+  serviceName: opensearch-cluster-master-headless
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/instance: release-name
+  replicas: 1
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: "opensearch-cluster-master"
+    spec:
+      accessModes:
+      - "ReadWriteOnce"
+      storageClassName: "openebs-sc"
+      resources:
+        requests:
+          {{- if .Values.opensearch.resources.storageRequest }}
+          storage: {{ .Values.opensearch.resources.storageRequest }}
+          {{- else }}
+          storage: 30Gi
+          {{- end }}
+  template:
+    metadata:
+      name: "opensearch-cluster-master"
+      labels:
+        helm.sh/chart: opensearch-2.13.3
+        app.kubernetes.io/name: opensearch
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/version: "2.8.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: opensearch-cluster-master
+      annotations:
+        configchecksum: b017adbf3b810c2d53ad68cf89d1ebab1dc028bc40046b7df2403bfa6477dc1
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      automountServiceAccountToken: false
+      tolerations:
+      - operator: Exists
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - release-name
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - opensearch
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - name: config
+        configMap:
+          name: opensearch-cluster-master-config
+      - name: opensearch-cluster-master
+        persistentVolumeClaim:
+          claimName: opensearch-cluster-master-opensearch-cluster-master-0
+      enableServiceLinks: true
+      initContainers:
+      - name: fsgroup-volume
+        image: "busybox:latest"
+        imagePullPolicy: "IfNotPresent"
+        command: ['sh', '-c']
+        args:
+          - 'chown -R 1000:1000 /usr/share/opensearch/data'
+        securityContext:
+          runAsUser: 0
+        resources:
+          {}
+        volumeMounts:
+          - name: "opensearch-cluster-master"
+            mountPath: /usr/share/opensearch/data
+      containers:
+      - name: "opensearch"
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1000
+        image: "mingyangtech.com.cn/opensearchproject/opensearch:2.8.0"
+        imagePullPolicy: "IfNotPresent"
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 5
+          tcpSocket:
+            port: 9200
+          timeoutSeconds: 3
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: 9200
+          timeoutSeconds: 3
+        ports:
+        - name: http
+          containerPort: 9200
+        - name: transport
+          containerPort: 9300
+        - name: metrics
+          containerPort: 9600
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 100Mi
+          limits:
+            {{- if .Values.opensearch.resources.cpuLimit }}
+            cpu: {{ .Values.opensearch.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+            {{- if .Values.opensearch.resources.memoryLimit }}
+            memory: {{ .Values.opensearch.resources.memoryLimit }}
+            {{- else }}
+            memory: 4Gi
+            {{- end }}  
+        env:
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: cluster.initial_master_nodes
+          value: "opensearch-cluster-master-0"
+        - name: discovery.seed_hosts
+          value: "opensearch-cluster-master-headless"
+        - name: cluster.name
+          value: "opensearch-cluster"
+        - name: network.host
+          value: "0.0.0.0"
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xmx512M -Xms512M"
+        - name: node.roles
+          value: "master,ingest,data,remote_cluster_client,"
+        volumeMounts:
+        - name: "opensearch-cluster-master"
+          mountPath: /usr/share/opensearch/data
+        - name: config
+          mountPath: /usr/share/opensearch/config/opensearch.yml
+          subPath: opensearch.yml
+
+# Deploy Opensearch Dashboard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch-dashboard
+  namespace: cncp-system
+  labels:
+    app: opensearch-dashboard
+spec:
+  ports:
+  - port: 5601
+    nodePort: 31022
+  type: NodePort
+  selector:
+    app: opensearch-dashboard
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch-dashboard
+  namespace: cncp-system
+  labels:
+    app: opensearch-dashboard
+spec:
+  selector:
+    matchLabels:
+      app: opensearch-dashboard
+  template:
+    metadata:
+      labels:
+        app: opensearch-dashboard
+    spec:
+      #nodeSelector:
+        #es: log
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: opensearch-dashboard
+        image: mingyangtech.com.cn/opensearch-dashboards:v1.0.0
+        imagePullPolicy: "IfNotPresent"
+        securityContext:
+          privileged: true
+        resources:
+          limits:
+            {{- if .Values.dashboard.resources.cpuLimit }}
+            cpu: {{ .Values.dashboard.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+          requests:
+            cpu: 1000m
+        env:
+        - name: OPENSEARCH_HOSTS
+          value: http://opensearch-cluster-master-headless:9200
+        ports:
+        - containerPort: 5601
+
+# Deploy Fluentd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd-os
+  namespace: cncp-system
+  labels:
+    k8s-app: fluentd-os
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd-os
+  labels:
+    k8s-app: fluentd-os
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - "namespaces"
+  - "pods"
+  verbs:
+  - "get"
+  - "watch"
+  - "list"
+
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd-os
+  labels:
+    k8s-app: fluentd-os
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+subjects:
+- kind: ServiceAccount
+  name: fluentd-os
+  namespace: cncp-system
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: fluentd-os
+  apiGroup: ""
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fluentd-os-config
+  namespace: cncp-system
+data:
+  system.conf: |-
+    <system>
+      root_dir /tmp/fluentd-buffers/
+    </system>
+  fluent.conf: |
+    <source>
+      @id fluentd-containers.log
+      @type tail
+      path /var/log/containers/*.log
+      pos_file /var/log/opensearch-containers.log.pos
+      tag raw.kubernetes.*
+      read_from_head true
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+          time_key time
+          time_format %Y-%m-%dT%H:%M:%S.%NZ
+        </pattern>
+        <pattern>
+          format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+        </pattern>
+      </parse>
+    </source>
+    
+    <match raw.kubernetes.**>
+      @id raw.kubernetes
+      @type detect_exceptions
+      remove_tag_prefix raw
+      message log                       
+      stream stream                     
+      multiline_flush_interval 5
+      max_bytes 500000
+      max_lines 1000
+    </match>
+    
+    # <filter **>
+    #   @id filter_concat
+    #   @type concat
+    #   key log
+    #   multiline_end_regexp /\n$/
+    #   separator ""
+    # </filter> 
+    
+    <filter kubernetes.**>
+      @id filter_kubernetes_metadata
+      @type kubernetes_metadata
+    </filter>
+    
+    <filter kubernetes.**>
+      @id filter_parser
+      @type parser
+      key_name log
+      reserve_data true
+      remove_key_name_field true
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+        </pattern>
+        <pattern>
+          format none
+        </pattern>
+      </parse>
+    </filter>
+    
+    <filter kubernetes.**>
+      @id filter_log
+      @type grep
+      <regexp>
+        key $.kubernetes.labels.logging
+        pattern ^true$
+      </regexp>
+    </filter>
+    
+    <filter kubernetes.**>
+      @type record_transformer
+      remove_keys $.docker.container_id,$.kubernetes.container_image_id,$.kubernetes.pod_id,$.kubernetes.namespace_id,$.kubernetes.master_url,$.kubernetes.labels.pod-template-hash,$.kubernetes.container_image,$.kubernetes.container_name,$.kubernetes.host,$.kubernetes.labels.cncp-component,$.kubernetes.labels.logging,$.kubernetes.namespace_labels.kubernetes.io/metadata.name,$.stream,$.kubernetes.pod_ip
+    </filter>
+    
+    <match kubernetes.**>
+      @type opensearch 
+      include_tag_key true 
+      host opensearch-cluster-master-headless 
+      port 9200
+      user admin
+      password admin
+      index_name cncp-log
+      include_timestamp true
+      logstash_format false
+      request_timeout    30s
+      ssl_verify false
+      scheme http
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/kubernetes.system.buffer
+        flush_mode interval
+        retry_type exponential_backoff
+        flush_thread_count 2
+        flush_interval 5s
+        retry_forever
+        retry_max_interval 30
+        chunk_limit_size 2M
+        queue_limit_length 8
+        overflow_action block
+        timekey 1h
+      </buffer>
+    </match>
+    
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-os
+  namespace: cncp-system
+  labels:
+    k8s-app: fluentd-os
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-os
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-os
+        kubernetes.io/cluster-service: "true"
+    spec:
+      serviceAccountName: fluentd-os
+      containers:
+      - name: fluentd-os
+        image: mingyangtech.com.cn/mingyang/fluentd:v1.0.0
+        imagePullPolicy: "IfNotPresent"
+        env:
+        - name: FLUENTD_ARGS
+          value: --no-supervisor -q
+        - name: FLUENT_OPENSEARCH_USER
+          value: "admin"
+        - name: FLUENT_OPENSEARCH_PASSWORD
+          value: "admin"  
+        - name: FLUENT_OPENSEARCH_SCHEME
+          value: "https"
+        - name:  FLUENT_OPENSEARCH_HOST
+          value: "opensearch-cluster-master-headless"
+        - name:  FLUENT_OPENSEARCH_PORT
+          value: "9200"    
+        resources:
+          limits:
+            {{- if .Values.fluentd.resources.memoryLimit }}
+            memory: {{ .Values.fluentd.resources.memoryLimit }}
+            {{- else }}
+            memory: 500Mi
+            {{- end }}
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+        - name: config-volume
+          mountPath: /fluentd/etc
+      priorityClassName: system-node-critical
+      tolerations:
+      - operator: Exists
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: config-volume
+        configMap:
+          name: fluentd-os-config

@@ -1,0 +1,59 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: domainfilters.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: DomainFilter
+    listKind: DomainFilterList
+    plural: domainfilters
+    singular: domainfilter
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.name
+          name: Name   
+          type: string
+        - jsonPath: .metadata.namespace
+          name: NAMESPACE
+          type: string
+        - jsonPath: .spec.filterA
+          name: FILTERA
+          type: boolean
+        - jsonPath: .spec.filterAAAA
+          name: FILTERAAAA
+          type: boolean  
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: DomainFilter is the Schema for the DomainFilter API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: DomainFilterSpec defines the desired state of DomainFilterinterface
+              properties:
+                filterA:
+                  type: boolean   
+                filterAAAA:
+                  type: boolean
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}

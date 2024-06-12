@@ -1,0 +1,83 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: ddnsglobals.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: DdnsGlobal
+    listKind: DdnsGlobalList
+    plural: ddnsglobals
+    singular: ddnsglobal
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: DdnsGlobal is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: DdnsGlobalSpec defines the desired state of DdnsGlobal
+              properties:
+                dhcpServerName:
+                  type: string
+                tsigKeys:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      algorithm:
+                        type: string
+                      secret:
+                        type: string
+                ddnsDomains:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      keyName:
+                        type: string
+                      dnsServer:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ipaddress:
+                              type: string
+                            port:
+                              type: integer
+              required:
+                - dhcpServerName
+              type: object
+          required:
+             - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

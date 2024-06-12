@@ -1,0 +1,67 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: nat66staticmappings.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: Nat66StaticMapping
+    listKind: Nat66StaticMappingList
+    plural: nat66staticmappings
+    singular: nat66staticmapping
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.vrfId
+          name: vrfId
+          type: integer
+        - jsonPath: .spec.localIp
+          name: localIp
+          type: string
+        - jsonPath: .spec.externalIp
+          name: externalIp
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: 'nat66staticmapping is the Schema for the nat66staticmapping API'
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: 'StaticmappingSpec defines the desired state of Vppinterface'
+              properties:
+                vrfId:
+                  type: integer
+                localIp:
+                  type: string
+                externalIp:
+                  type: string         
+              required:
+              - localIp
+              - externalIp
+              type: object
+          required:
+          - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

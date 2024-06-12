@@ -1,0 +1,29 @@
+dns:
+  # dns必填、选填参数说明：
+  # 1、必填参数如下所列。
+  #     * enabled
+  # 2、其他参数均为选填参数。
+  enabled: true
+  # 网络类型的取值有两个：Cluster，MacVlan。目前仅支持取值为Cluster，下同。
+  networkType: Cluster
+  clusterNetworkIp4ServiceAddress: 172.16.102.240
+  clusterNetworkIp6ServiceAddress: 2408:8631:c02:ffa2::240
+  resources:
+    cpuLimit: 2000m
+    memoryLimit: 8Gi
+dhcp4:
+  enabled: true
+  networkType: Cluster
+  clusterNetworkIp4ServiceAddress: 172.16.102.241
+  resources:
+    storageRequest: 20Gi
+    cpuLimit: 2000m
+    memoryLimit: 8Gi
+dhcp6:
+  enabled: true
+  networkType: Cluster
+  clusterNetworkIp6ServiceAddress: 2408:8631:c02:ffa2::241
+  resources:
+    storageRequest: 20Gi
+    cpuLimit: 2000m
+    memoryLimit: 8Gi

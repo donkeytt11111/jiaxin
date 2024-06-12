@@ -1,0 +1,89 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  #名称必须与下面的spec字段匹配，格式为:<plural>.<group>
+  name: vppmapdomains.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: VppMapDomain
+    listKind: VppMapDomainList
+    # URL中使用的复数名称: /apis/<group>/<version>/<plural>
+    plural: vppmapdomains
+    # 在CLI(shell界面输入的参数)上用作别名并用于显示的单数名称
+    singular: vppmapdomain
+    
+  # 指定crd资源作用范围在命名空间或集群
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.name
+          name: name
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: vppmapdomain is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: VppMapDomainSpec defines the desired state of VppMapDomain
+              properties:
+                index:
+                  type: integer
+                  description: 'Automatic primary key generation'
+                ip6Prefix:
+                  type: string
+                  description: 'As part of the translated destination address.'
+                ip4Prefix:
+                  type: string
+                  description: 'Determine the address range to translate.'
+                ip6Src:
+                  type: string
+                  description: 'the translated source address'
+                eaBitsLen:
+                  type: integer
+                  description: 'eaBits length'
+                psidOffset:
+                  type: integer
+                  description: 'psid offset'
+                psidLength:
+                   type: integer
+                   description: 'psid length'
+                mtu:
+                   type: integer
+                   description: 'mtu'
+                tag:
+                   type: integer
+                   description: 'tag'
+              required:
+                - ip6Prefix
+                - ip4Prefix
+                - ip6Src
+              type: object
+          required:
+             - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

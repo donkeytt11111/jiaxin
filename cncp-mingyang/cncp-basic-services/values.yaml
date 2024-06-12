@@ -1,0 +1,38 @@
+redis:
+  # redis必填、选填参数说明：以下均为选填参数。
+  resources:
+    storageRequest: 20Gi
+    cpuLimit: 1000m
+    memoryLimit: 4Gi
+postgres:
+  # postgres必填、选填参数说明：以下均为选填参数。
+  resources:
+    storageRequest: 20Gi
+    cpuLimit: 1000m
+    memoryLimit: 4Gi
+metalLB:
+  # metallb必填、选填参数说明：以下均为选填参数。
+  # ipAddressPool: []
+  ipAddressPool:
+  - 172.16.102.240-172.16.102.244
+  - 2408:8631:c02:ffa2::240-2408:8631:c02:ffa2::244
+opensearch:
+  # opensearch必填、选填参数说明：以下均为选填参数。
+  resources:
+    storageRequest: 50Gi
+    cpuLimit: 1000m
+    memoryLimit: 4Gi
+dashboard:
+  # dashboard必填、选填参数说明：以下均为选填参数。
+  resources:
+    cpuLimit: 1000m
+fluentd:
+  # fluentd必填、选填参数说明：以下均为选填参数。
+  resources:
+    memoryLimit: 500Mi
+global:
+  # global必填、选填参数说明：以下均为选填参数。
+  dualStackSupport: false
+dependencies:
+- name: cncp-crds
+  version: v1.0.0

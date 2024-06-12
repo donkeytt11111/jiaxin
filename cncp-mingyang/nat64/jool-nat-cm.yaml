@@ -1,0 +1,56 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata: 
+  name: jool-nat
+  namespace: cncp-production
+  labels:
+    cncp-component: jool-nat
+data:
+  resolv.conf: |
+    nameserver 114.114.114.114
+    nameserver 8.8.8.8
+    nameserver 2400:3200::1
+    nameserver 2400:3200:baba::1
+  copylog.sh: |
+    #!/bin/sh
+    temp_file="/root/temp_file.txt"
+
+    if [ ! -f "$temp_file" ]; then
+        touch "$temp_file"
+    fi
+    
+    while true
+    do
+        cp "$temp_file" "$temp_file.old"
+        new_output=$(dmesg -r | grep "Jool" | grep "Added")
+        echo "$new_output" > "$temp_file"
+    	  diff -u $temp_file.old $temp_file | grep -E '^\+|^-' | grep -v '^---\|^+++' | sed 's/^\+//' | awk '{if ($0 != "") {print $0}}'
+        sleep 180
+    done
+  entrypoint.sh: |
+    #!/bin/sh
+    sysctl -w net.ipv6.conf.all.forwarding=1
+    sysctl -w net.ipv4.conf.all.forwarding=1
+    ip route del default
+    ip route add default via ${IPV4_DEFAULT_GATEWAY}
+    ip -6 route del default
+    ip -6 route add default via ${IPV6_DEFAULT_GATEWAY}
+    jool file handle /etc/jool/jool_nat.conf
+    jool -i mingyang-nat global update logging-session true
+    /bin/sh /usr/local/bin/route.sh
+    /bin/sh /usr/local/bin/iptables.sh
+    /bin/sh /usr/local/bin/copylog.sh
+    tail -f /dev/null
+  jool_nat.conf: |
+    {
+      "instance": "mingyang-nat",
+      "framework": "netfilter",
+      "global": {
+          "pool6": "fd10:64::/96"
+      }
+    }
+  route.sh: |  
+    #!/bin/sh
+  iptables.sh: |  
+    #!/bin/sh

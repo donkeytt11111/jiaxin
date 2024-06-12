@@ -1,0 +1,67 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: serverdevices.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: ServerDevice
+    listKind: ServerDeviceList
+    plural: serverdevices
+    singular: serverdevice
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:   
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: ServerDevice is the Schema for the ServerDevice API
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: ServerDeviceSpec defines the desired state of ServerDevice
+              type: object
+              properties:
+                role:  
+                  type: string
+                serverName:
+                  type: string
+                serverModel:
+                  type: string
+                serverSN: 
+                  type: string
+                version: 
+                  type: string
+                cpu:
+                  type: string
+                memory: 
+                  type: string
+              required:
+                - serverName
+            status:
+              description: ServerDeviceStatus defines the observed state of ServerDevice
+              type: object
+              properties:
+                serverDeviceState:
+                  type: string
+                alarmState:
+                  type: string
+          required:
+            - spec
+      served: true
+      storage: true
+      subresources: {}

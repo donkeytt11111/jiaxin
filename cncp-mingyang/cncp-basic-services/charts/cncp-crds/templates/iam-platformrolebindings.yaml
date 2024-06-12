@@ -1,0 +1,13 @@
+---
+kind: PlatformRoleBinding
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: admin-binding
+roleRef:
+  kind: PlatformRole
+  apiGroup: iam.mingyangtech.com.cn
+  name: platform-admin
+subjects:
+- kind: User
+  apiGroup: iam.mingyangtech.com.cn
+  name: admin

@@ -1,0 +1,148 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: subnets.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: Subnet
+    listKind: SubnetList
+    plural: subnets
+    singular: subnet
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.subnet
+          name: SUBNET
+          type: string
+        - jsonPath: .spec.ttl
+          name: TTL
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: Subnet is the Schema for the subnets API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: SubnetSpec defines the desired state of Subnet
+              properties:
+                name:
+                  type: string
+                  description: 'subnet name'
+                networkDomain:
+                  type: string
+                subnetType:
+                  type: string
+                subnet:
+                  type: string
+                gateway:
+                  type: string
+                ttl:
+                  type: integer
+                description:
+                  type: string
+                allocationScheme:
+                  type: string
+                allocationModel:
+                  type: string
+                authentication:
+                  type: object
+                  properties:
+                    enable:
+                      type: string
+                    authenticationMethod:
+                      type: string
+                    authenticationIPAddress:
+                      type: string
+                automaticBind:
+                  type: string
+                securityBaseline:
+                  type: boolean
+                pdPool:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      pdPrefix:
+                        type: string
+                      prefixLength:
+                        type: integer
+                      delegatePrefixLength:
+                        type: integer
+                pools:
+                  type: array
+                  description: 'for example "pools": [{ "pool": "172.16.11.1 - 172.16.11.25"}]'
+                  items:
+                    type: object
+                    properties:
+                      pool:
+                        type: string
+                reservations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      hwAddress:
+                        type: string
+                        description: 'This is a reservation for a specific hardware/MAC address.'
+                      duid:
+                        type: string
+                        description: 'duid and hwAddress cant both exist'
+                      ipAddress:
+                        type: string
+                      type:
+                        type: string
+                        description: 'Static and Dynamic,default is Static'
+                      remark:
+                        type: string
+                        description: 'Remark'
+                optionDatas:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      code:
+                        type: integer
+                      data:
+                        type: string
+                relay:
+                  type: object
+                  properties:
+                    ipAddresses:
+                      type: array
+                      items:
+                        type: string
+              required:
+                - subnet
+                - name
+                - subnetType
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: { }
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: [ ]
+  storedVersions: [ ]
+

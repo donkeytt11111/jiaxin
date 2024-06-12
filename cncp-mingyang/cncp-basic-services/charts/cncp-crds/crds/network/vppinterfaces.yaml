@@ -1,0 +1,394 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  #名称必须与下面的spec字段匹配，格式为:<plural>.<group>
+  name: vppinterfaces.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: VppInterface
+    listKind: VppInterfaceList
+    # URL中使用的复数名称: /apis/<group>/<version>/<plural>
+    plural: vppinterfaces
+    # 在CLI(shell界面输入的参数)上用作别名并用于显示的单数名称
+    singular: vpp
+    
+  # 指定crd资源作用范围在命名空间或集群
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.name
+          name: name
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: Vppinterface is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: VppInterfaceSpec defines the desired state of Vppinterface
+              properties:
+                name:
+                  description: 接口名称是表示接口逻辑名称的必填字段。它在所有配置的 VPP 接口中必须是唯一的
+                  type: string
+                type:
+                  description: 接口类型
+                  type: string
+                  enum: ["UNDEFINED_TYPE", "SUB_INTERFACE", "SOFTWARE_LOOPBACK","DPDK","MEMIF","TAP","AF_PACKET","VXLAN_TUNNEL","IPSEC_TUNNEL","VMXNET3_INTERFACE","BOND_INTERFACE","GRE_TUNNEL","GTPU_TUNNEL","IPIP_TUNNEL","WIREGUARD_TUNNEL","RDMA"]
+                enabled:
+                  description: "控制接口的状态，若为true则状态显示为up，若为false则状态显示为down"
+                  type: boolean
+                physicalAddress:
+                  description: "接口的物理地址(MAC),如果为空则分配随机地址"
+                  type: string
+                ipAddresses:
+                  description: "定义接口的IP地址列表，只能是以下格式<ip_addresses>/<ipPrefix>"
+                  type: array
+                  items:
+                    type: string
+                vrf:
+                  description: "当使用未编号时,实际的vrf继承自已编号接口引用的接口 忽略该字段"
+                  type: integer
+                setDhcpClient:
+                  description: "在接口上是否启用dhcp客户端"
+                  type: boolean
+                ip6ND:
+                  description: "用于启用或者禁用 IPv6 ND 地址自动配置并设置默认路由"
+                  type: object
+                  properties:
+                    addressAutoConfig:
+                      description: "启用 IPv6 ND 地址自动配置"
+                      type: boolean
+                    installDefaultRoutes:
+                      description: "启用安装默认路由"
+                      type: boolean
+                mtu:
+                  description: "最大传输单元 设置此接口的MTU,如果设置为零,将使用默认 MTU（通常为 9216）"
+                  type: integer
+                  maximum: 9216
+                  minimum: 0
+                unnumbered:
+                  description: "用于从另一个接口继承 IP 地址"
+                  type: object
+                  properties:
+                    interfaceWithIp:
+                      description: "要从中继承 IP 地址的接口的名称"
+                      type: string
+                rxModes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      queue:
+                        description: "队列"
+                        type: integer
+                      mode:
+                        type: string
+                        enum: ["UNKNOWN", "POLLING", "INTERRUPT","ADAPTIVE","DEFAULT"]
+                      defaultMode:
+                        description: "如果设置为true,<queue> 字段将被忽略,并且<mode> 将用作所有队列的默认值。"
+                        type: boolean
+                rxPlacement:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      queue:
+                        description: "从<0, number-of-queues>区间选择"
+                        type: integer
+                      worker:
+                        description: "从<0, number-of-workers>区间选择"
+                        type: integer
+                      mainThread:
+                        description: "让主线程处理指定队列,如果启用,则忽略<worker>的值"
+                        type: boolean
+                sub:
+                  description: "sub接口类型的配置"
+                  type: object
+                  properties:
+                    parentName:
+                      description: "父接口的名称"
+                      type: string
+                    subId:
+                      description: "子接口id,作用于VLAN"
+                      type: integer
+                    tagRwOption:
+                      description: "VLAN 标记重写规则应用于子接口的给定标记"
+                      type: string
+                      enum: ["DISABLED", "PUSH1", "PUSH2","POP1","POP2","TRANSLATE11","TRANSLATE12","TRANSLATE21","TRANSLATE22"]
+                    pushDot1q:
+                      description: "如果为 true，则将第一个标签的 ether-type 设置为 dot1q，否则设置为 dot1ad"
+                      type: boolean
+                    tag1:
+                      description: "第一个标签（PUSH1 和任何 TRANSLATE 都需要）"
+                      type: integer
+                    tag2:
+                      description: "第二个标签（PUSH2 和任何 TRANSLATE 都需要）"
+                      type: integer
+                memif:
+                  description: "memif接口类型的配置"
+                  type: object
+                  properties:
+                    mode:
+                      description: "接口模式"
+                      type: string
+                      enum: ["ETHERNET", "IP", "PUNT_INJECT"]
+                    master:
+                      description:
+                      type: boolean
+                    id:
+                      description: "Id 是一个 32 位整数，用于验证和匹配连接的另一端"
+                      type: integer
+                    socketFilename:
+                      description: "用于建立连接的套接字文件名"
+                      type: string
+                    secret:
+                      description:
+                      type: string
+                    ringSize:
+                      description: "RX/TX 环的条目数"
+                      type: integer
+                    bufferSize:
+                      description: "为每个环条目分配的缓冲区大小"
+                      type: integer
+                    rxQueues:
+                      description: "rx 队列数（​​仅对从机有效）"
+                      type: integer
+                    txQueues:
+                      description: "tx 队列数（​​仅对从机有效）"
+                      type: integer
+                afpacket:
+                  description: "AfpacketLink接口类型的配置"
+                  type: object
+                  properties:
+                    hostIfName:
+                      description: "需要绑定的主机（Linux）接口名"
+                      type: string
+                    linuxInterface:
+                      description: "要绑定的 Linux 接口的逻辑名称"
+                      type: string
+                tap:
+                  description: "TAP接口类型的配置"
+                  type: object
+                  properties:
+                    version:
+                      description: "1 或者 unset = 使用原来的TAP接口； 2 = 使用基于 virtio 的快速 TAP"
+                      type: string
+                    hostIfName:
+                      description: "主机操作系统中 TAP 接口的名称（如果为空，则自动生成）"
+                      type: string
+                    toMicroservic:
+                      description: "如果 TAP 将 VPP 与微服务连接，则在此参数中填写目标微服务名称 - 应该与关联的命名空间引用匹配"
+                      type: string
+                    rxRingSize:
+                      description: "Rx 环形缓冲区大小；必须是 2 的幂；默认为 256；仅适用于 TAP v.2"
+                      type: integer
+                    txRingSize:
+                      description: "Tx 环形缓冲区大小；必须是 2 的幂；默认为 256；仅适用于 TAP v.2"
+                      type: integer
+                    enableGSO:
+                      description: "Tx EnableGso 启用 TAP 接口的 GSO 模式。"
+                      type: boolean
+                    enableTunnel:
+                      description: "EnableTunnel 启用 TAP 接口的隧道模式。"
+                      type: boolean
+                vxlan:
+                  description: "VXLAN_TUNNEL接口类型的配置"
+                  type: object
+                  properties:
+                    srcAddress:
+                      description: "源 VTEP 地址（IP地址格式校验）"
+                      type: string
+                    dstAddress:
+                      description: "目的 VTEP 地址（IP地址格式校验）"
+                      type: string
+                    vni:
+                      description: "Vni 代表 VXLAN 网络标识符"
+                      type: integer
+                    multicast:
+                      description: "组播接口的名称"
+                      type: string
+                    gpe:
+                      description: "Gpe（通用协议扩展）不仅允许封装以太网帧有效负载"
+                      type: object
+                      properties:
+                        decapVrfId:
+                          description: 
+                          type: integer
+                        protocol:
+                          description: "定义封装的协议"
+                          type: string
+                          enum: ["UNKNOWN", "IP4", "IP6","ETHERNET","NSH"]
+                ipsec:
+                  description: "IPSEC_TUNNEL接口类型的配置（在VPP 21.06及更新版本中，IPSecLink仅用于创建链路）"
+                  type: object
+                  properties:
+                    tunnelMode:
+                      description: "IPIP隧道模式"
+                      type: string
+                      enum: ["POINT_TO_POINT", "POINT_TO_MULTIPOINT"]
+                vmxNet:
+                  description: "VmxNet3Link接口类型的配置"
+                  type: object
+                  properties:
+                    enableElog:
+                      description: "打开elog"
+                      type: boolean
+                    rxqSize:
+                      description: "接收队列大小（默认为 1024）"
+                      type: integer
+                    txqSize:
+                      description: "传输队列大小（默认为 1024）"
+                      type: integer
+                bond:
+                  description: "BOND_INTERFACE接口类型的配置"
+                  type: object
+                  properties:
+                    id:
+                      description: 
+                      type: integer
+                    mode:
+                      description: "接收队列大小（默认为 1024）"
+                      type: string
+                      enum: ["UNKNOWN", "ROUND_ROBIN","ACTIVE_BACKUP","XOR","BROADCAST","LACP"]
+                    lb:
+                      description: "负载平衡是可选的，仅对 XOR 和 LACP 模式有效"
+                      type: string
+                      enum: ["L2", "L34", "L23","L23","RR","BC","AB"]
+                    bondedInterfaces:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string  
+                          isPassive: 
+                            type: boolean
+                          isLongTimeout:
+                            type: boolean      
+                gre:
+                  description: "GreLink接口类型的配置"
+                  type: object
+                  properties:
+                    tunnelType:
+                      description: 
+                      type: string
+                      enum: ["UNKNOWN", "L3", "TEB","ERSPAN"]
+                    srcAddr:
+                      description: "源地址"
+                      type: string
+                    dstAddr:
+                      description: "目的地址"
+                      type: string
+                    outerFibId:
+                      description: 
+                      type: integer
+                    sessionId:
+                      description: 
+                      type: integer
+                gtpu:
+                  description: "GtpuLink 接口类型的配置"
+                  type: object
+                  properties:
+                    srcAddr:
+                      description: "源VTEP地址"
+                      type: string
+                    dstAddr:
+                      description: "目的VTEP地址"
+                      type: string
+                    multicast:
+                      description: "组播接口名称"
+                      type: integer
+                    teid:
+                      description: "隧道端点标识符 - 本地"
+                      type: integer
+                    remoteTeid:
+                      description: "隧道端点标识符 - 远程"
+                      type: integer
+                    encapVrfId:
+                      description: "封装数据包的 VRF id"
+                      type: integer
+                    decapNextNode:
+                      description: "解封装后的下一个 VPP 节点"
+                      type: integer
+                ipip:
+                  description: "IPIPLink 接口类型的配置"
+                  type: object
+                  properties:
+                    tunnelMod:
+                      description: "IPIP隧道模式"
+                      type: string
+                      enum: ["POINT_TO_POINT", "POINT_TO_MULTIPOINT"]
+                    srcAddr:
+                      description: "源 VTEP IP 地址"
+                      type: string
+                    dstAddr:
+                      description: "目标 VTEP IP 地址"
+                      type: string
+                wireguard:
+                  description: "WireguardLink 接口类型的配置"
+                  type: object
+                  properties:
+                    privateKey:
+                      description: "私钥 base64"
+                      type: string
+                    port:
+                      description: "监听 UDP 端口"
+                      type: integer
+                      maximum: 65535
+                      minimum: 0
+                    srcAddr:
+                      description: "源 IP 地址"
+                      type: string
+                rdma:
+                  description: "RDMALink接口类型的配置"
+                  type: object
+                  properties:
+                    hostIfName:
+                      description: "表示要附加到的启用 RDMA 的网络设备的 Linux 接口名称"
+                      type: string
+                    mode:
+                      description: "RDMA 驱动程序运行的模式"
+                      type: string
+                      enum: ["AUTO", "IBV","DV"]
+                    rxqNum:
+                      description: "接收队列数,默认情况下只使用一个 RX 队列"
+                      type: integer
+                    rxqSize:
+                      description: "每个 RX 队列的大小,默认为 1024 字节。"
+                      type: integer
+                    txqSize:
+                      description: "每个 TX 队列的大小,默认为 1024 字节。"
+                      type: integer
+                description:
+                  type: string
+              required:
+                - name
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

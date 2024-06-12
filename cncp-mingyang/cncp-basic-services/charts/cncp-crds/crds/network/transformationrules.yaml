@@ -1,0 +1,135 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: transformationrules.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: TransformationRule
+    listKind: TransformationRuleList
+    plural: transformationrules
+    singular: transformationrule
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.appName
+          name: APPNAME
+          type: string
+        - jsonPath: .spec.pubDoName
+          name: PUBDONAME
+          type: string
+        - jsonPath: .spec.relAddr
+          name: RELADDR
+          type: string
+        - jsonPath: .spec.relPort
+          name: RELPORT
+          type: integer
+        - jsonPath: .spec.backdoname
+          name: BACKDONAME
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: transformationrules is the Schema for the transformationruleses API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                appName:
+                  type: string
+                pubDoName:
+                  type: string
+                backdoname:
+                  type: string
+                relAddrPort:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      relAddr:
+                        type: string
+                      relPort:
+                        type: integer
+                      relhttpstr:
+                        type: string
+                backaddrweight:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      backaddr:
+                        type: string
+                      backweight:
+                        type: string
+                backdonameport:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      backdoname:
+                        type: string           
+                      backPort:
+                        type: integer
+                      httpStr:
+                        type: string
+                appGroup:
+                  type: string
+                outerChainSwi:
+                  type: boolean
+                joinDetec:
+                  type: boolean
+                accessID:
+                  type: string
+                chanDirec:
+                  type: string
+                chanType:
+                  type: string
+                cacheAcce:
+                  type: string
+                appProtec:
+                  type: boolean
+                sourceAddrCarry:
+                  type: boolean
+                backStrategy:
+                  type: string
+                certSelec:
+                  type: string
+                enable:
+                  type: boolean
+                switchNginx: 
+                  type: boolean
+                antiTheftChain: 
+                  type: boolean
+              required:
+                - appName
+                - pubDoName
+                - relAddrPort
+                - backdonameport
+                - antiTheftChain
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

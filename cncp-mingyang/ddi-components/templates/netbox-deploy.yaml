@@ -1,0 +1,397 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: netbox
+  namespace: kube-system
+data:
+  ALLOWED_HOSTS: "*"
+  DB_PORT: "32002"
+  DB_NAME: "netbox"
+  DB_USER: "netbox"
+  DB_PASSWORD: "Passw0rd@MY"
+  REDIS_PORT: "32001"
+  REDIS_PASSWORD: "Passw0rd@MY"
+  REDIS_DATABASE: "0"
+  REDIS_SSL: "false"
+  REDIS_CACHE_PORT: "32001"
+  REDIS_CACHE_PASSWORD: "Passw0rd@MY"
+  REDIS_CACHE_DATABASE: "0"
+  REDIS_CACHE_SSL: "false"
+  SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  SUPERUSER_API_TOKEN: "0123456789abcdef0123456789abcdef01234567"
+  SUPERUSER_NAME: "admin"
+  SUPERUSER_PASSWORD: "Passw0rd@MY"
+  nginx.conf: |-
+    worker_processes 1;
+    events {
+      worker_connections 1024;
+    }
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      tcp_nopush on;
+      keepalive_timeout 65;
+      gzip on;
+      server_tokens off;
+      server {
+        client_max_body_size 10M;
+        listen 80;
+        server_name 127.0.0.1;
+        access_log off;
+        location /static/ {
+          expires 30d;
+          alias /opt/netbox/netbox/static/;
+        }
+        location / {
+          proxy_pass http://127.0.0.1:8080;
+          proxy_set_header X-Forwarded-Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+        }
+      }
+    }
+  init-database.sh: |-
+    #!/bin/bash
+    psql -h $PGHOST -p $PGPORT -U root -d netbox  << EOF
+    EOF
+    if [ $? -ne 0 ];then
+    	psql -h $PGHOST -p $PGPORT -U root << EOF
+    	create database netbox;
+    	create user netbox  with password 'Passw0rd@MY';
+    	GRANT ALL PRIVILEGES ON DATABASE netbox TO netbox ;
+    	\q
+    EOF
+    	exit 0
+    fi
+  docker-entrypoint.sh: |-
+    #!/bin/bash
+    # Runs on every start of the NetBox Docker container
+    # Stop when an error occures
+    set -e
+    # Allows NetBox to be run as non-root users
+    umask 002
+    # Load correct Python3 env
+    # shellcheck disable=SC1091
+    source /opt/netbox/venv/bin/activate
+    # Try to connect to the DB
+    DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT-3}
+    MAX_DB_WAIT_TIME=${MAX_DB_WAIT_TIME-30}
+    CUR_DB_WAIT_TIME=0
+    while [ "${CUR_DB_WAIT_TIME}" -lt "${MAX_DB_WAIT_TIME}" ]; do
+      # Read and truncate connection error tracebacks to last line by default
+      exec {psfd}< <(./manage.py showmigrations 2>&1)
+      read -rd '' DB_ERR <&$psfd || :
+      exec {psfd}<&-
+      wait $! && break
+      if [ -n "$DB_WAIT_DEBUG" ]; then
+        echo "$DB_ERR"
+      else
+        readarray -tn 0 DB_ERR_LINES <<<"$DB_ERR"
+        echo "${DB_ERR_LINES[@]: -1}"
+        echo "[ Use DB_WAIT_DEBUG=1 in netbox.env to print full traceback for errors here ]"
+      fi
+      echo "? Waiting on DB... (${CUR_DB_WAIT_TIME}s / ${MAX_DB_WAIT_TIME}s)"
+      sleep "${DB_WAIT_TIMEOUT}"
+      CUR_DB_WAIT_TIME=$((CUR_DB_WAIT_TIME + DB_WAIT_TIMEOUT))
+    done
+    if [ "${CUR_DB_WAIT_TIME}" -ge "${MAX_DB_WAIT_TIME}" ]; then
+      echo "? Waited ${MAX_DB_WAIT_TIME}s or more for the DB to become ready."
+      exit 1
+    fi
+    # Check if update is needed
+    if ! ./manage.py migrate --check >/dev/null 2>&1; then
+      echo "?? Applying database migrations"
+      ./manage.py migrate --no-input
+      echo "?? Running trace_paths"
+      ./manage.py trace_paths --no-input
+      echo "?? Removing stale content types"
+      ./manage.py remove_stale_contenttypes --no-input
+      echo "?? Removing expired user sessions"
+      ./manage.py clearsessions
+    fi
+    # Create Superuser if required
+    if [ "$SKIP_SUPERUSER" == "true" ]; then
+      echo "?? Skip creating the superuser"
+    else
+      if [ -z ${SUPERUSER_NAME+x} ]; then
+        SUPERUSER_NAME='admin'
+      fi
+      if [ -z ${SUPERUSER_EMAIL+x} ]; then
+        SUPERUSER_EMAIL='admin@example.com'
+      fi
+      if [ -f "/run/secrets/superuser_password" ]; then
+        SUPERUSER_PASSWORD="$(</run/secrets/superuser_password)"
+      elif [ -z ${SUPERUSER_PASSWORD+x} ]; then
+        SUPERUSER_PASSWORD='admin'
+      fi
+      if [ -f "/run/secrets/superuser_api_token" ]; then
+        SUPERUSER_API_TOKEN="$(</run/secrets/superuser_api_token)"
+      elif [ -z ${SUPERUSER_API_TOKEN+x} ]; then
+        SUPERUSER_API_TOKEN='0123456789abcdef0123456789abcdef01234567'
+      fi
+      ./manage.py shell --interface python <<END
+    from django.contrib.auth.models import User
+    from users.models import Token
+    if not User.objects.filter(username='${SUPERUSER_NAME}'):
+        u=User.objects.create_superuser('${SUPERUSER_NAME}', '${SUPERUSER_EMAIL}', '${SUPERUSER_PASSWORD}')
+        Token.objects.create(user=u, key='${SUPERUSER_API_TOKEN}')
+    END
+      echo "?? Superuser Username: ${SUPERUSER_NAME}, E-Mail: ${SUPERUSER_EMAIL}"
+    fi
+    # Run the startup scripts (and initializers)
+    if [ "$SKIP_STARTUP_SCRIPTS" == "true" ]; then
+      echo "?? Skipping startup scripts"
+    else
+      echo "import runpy; runpy.run_path('../startup_scripts')" | ./manage.py shell --interface python
+    fi
+    # Share static files
+    cp -rf /opt/netbox/netbox/static/* /opt/html/
+    echo "? Initialisation is done."
+    # Launch whatever is passed by docker
+    # (i.e. the RUN instruction in the Dockerfile)
+    exec "$@"
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: netbox
+  namespace: kube-system
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 32003
+  selector:
+    cncp-component: netbox
+  type: NodePort
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: netbox
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: netbox
+  template:
+    metadata:
+      labels:
+        cncp-component: netbox
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: html
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: netbox
+      - name: docker-entrypoint
+        configMap:
+          name: netbox
+          items:
+          - key: docker-entrypoint.sh
+            path: docker-entrypoint.sh
+          defaultMode: 511
+      - name: init-database
+        configMap:
+          name: netbox
+          defaultMode: 511
+      initContainers:
+      - name: init
+        image: "postgres:14.4"
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/bin/bash"
+        - "-c"
+        - "./init-database.sh"
+        env:
+        - name: PGHOST
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: KUBERNETES_API_SERVER_ADDRESS
+        - name: PGPORT
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_PORT
+        - name: PGPASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: init-database
+          mountPath: /init-database.sh
+          subPath: init-database.sh
+      containers:
+      - name: netbox
+        image: netboxcommunity/netbox:v3.2.6
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: ALLOWED_HOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: ALLOWED_HOSTS
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: KUBERNETES_API_SERVER_ADDRESS
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_NAME
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: DB_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: KUBERNETES_API_SERVER_ADDRESS
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_PASSWORD
+        - name: REDIS_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_DATABASE
+        - name: REDIS_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_SSL
+        - name: REDIS_CACHE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: KUBERNETES_API_SERVER_ADDRESS
+        - name: REDIS_CACHE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_CACHE_PORT
+        - name: REDIS_CACHE_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_CACHE_PASSWORD
+        - name: REDIS_CACHE_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_CACHE_DATABASE
+        - name: REDIS_CACHE_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: REDIS_CACHE_SSL
+        - name: SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: SECRET_KEY
+        - name: SUPERUSER_API_TOKEN
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: SUPERUSER_API_TOKEN
+        - name: SUPERUSER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: SUPERUSER_NAME
+        - name: SUPERUSER_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: netbox
+              key: SUPERUSER_PASSWORD
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: html
+          mountPath: /opt/html
+        - name: docker-entrypoint
+          mountPath: /opt/netbox/docker-entrypoint.sh
+          subPath: docker-entrypoint.sh
+      - name: nginx
+        image: nginx:1.21.4
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: html
+          mountPath: /opt/netbox/netbox/static
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 70
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - cncp-ms-01
+          - weight: 30
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - cncp-ns-01
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule

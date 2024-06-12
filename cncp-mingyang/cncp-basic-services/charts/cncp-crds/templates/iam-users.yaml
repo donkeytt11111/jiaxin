@@ -1,0 +1,21 @@
+---
+kind: User
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: admin
+  annotations:
+    iam.mingyangtech.com.cn/user-creator: system
+    iam.mingyangtech.com.cn/platformrole: platform-admin
+    iam.mingyangtech.com.cn/user-email: "admin@mingyangtech.com.cn"
+    helm.sh/resource-policy: keep
+spec:
+  type: Local
+  email: admin@mingyangtech.com.cn
+  {{- if .Values.iam.passwordOfAdminUser }}
+  password: {{ .Values.iam.passwordOfAdminUser }}
+  {{- else }}
+  password: Passw0rd@MY
+  {{- end }}
+  description: "系统管理员"
+  language: "Chinese Simplified"
+  theme: Light

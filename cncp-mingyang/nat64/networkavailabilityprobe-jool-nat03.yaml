@@ -1,0 +1,19 @@
+---
+kind: NetworkAvailabilityProbe
+apiVersion: network.mingyangtech.com.cn/v1
+metadata:
+  name: deployment-cncp-production-jool-nat-03
+  # namespace: cncp-production
+  # finalizers: []
+spec: 
+  type: deployment
+  namespace: cncp-production
+  name: jool-nat-03
+  monitorMethod: ping
+  monitorIpAddress: 
+    ipv4AddressList: [172.16.201.72]
+    ipv6AddressList: [2408:8631:c02:ffb1::72]
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  timeoutSeconds: 1

@@ -1,0 +1,19 @@
+---
+kind: NetworkAvailabilityProbe
+apiVersion: network.mingyangtech.com.cn/v1
+metadata:
+  name: deployment-cncp-production-sipproxy64
+  # namespace: cncp-production
+  # finalizers: []
+spec: 
+  type: deployment
+  namespace: cncp-production
+  name: sipproxy64
+  monitorMethod: ping
+  monitorIpAddress: 
+    ipv4AddressList: [20.2.3.151]
+    ipv6AddressList: [2403:dac0:0:1006::52]
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  timeoutSeconds: 1

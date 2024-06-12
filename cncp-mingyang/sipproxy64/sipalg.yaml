@@ -1,0 +1,154 @@
+---
+kind: NetworkAttachmentDefinition
+apiVersion: k8s.cni.cncf.io/v1
+metadata:
+  name: sipproxy-ens1
+  namespace: cncp-production
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "sipproxy",
+      "type": "macvlan",
+      "master": "enp25s0f0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "static",
+        "addresses": [
+          { "address": "20.2.3.151/24", "gateway": "20.2.3.129" }
+        ]
+      }
+    }
+    
+---
+kind: NetworkAttachmentDefinition
+apiVersion: k8s.cni.cncf.io/v1
+metadata:
+  name: sipproxy-ens2
+  namespace: cncp-production
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "sipproxy",
+      "type": "macvlan",
+      "master": "enp25s0f0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "static",
+        "addresses": [
+          { "address": "2403:dac0:0:1006::52/96", "gateway": "2403:dac0:0:1006::51" }
+        ]
+      }
+    }
+---
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: sipproxy64
+  namespace: cncp-production
+  labels:
+    cncp-component: sip-proxy64
+data:
+  resolv.conf: |
+    nameserver 114.114.114.114
+    nameserver 8.8.8.8
+    nameserver 2400:3200::1
+    nameserver 2400:3200:baba::1
+  detect-v6-network.sh: |
+    #!/usr/bin/env sh
+    msg=`ping -6 ${IPV6_DEFAULT_GATEWAY} -c 1`
+    LOGPATH="/var/log/detect_v6_network.log"
+    count=1
+    while true
+    do    
+        if [[ $msg =~ " 0% packet loss" ]]
+        then
+            echo "time $count success" >> ${LOGPATH}
+            break
+        else
+            echo "time $count fail" >> ${LOGPATH}
+            sleep 3
+        fi
+    count=$[$count + 1]
+    done
+  entrypoint.sh: |
+    #!/usr/bin/env sh
+    ipv4Default=`ip route | grep "default via"`
+    ipv6Default=`ip -6 route | grep "default via"`
+    set -e -u
+    if [ -n "$ipv4Default" ]
+    then
+      ip route del default
+    fi
+    ip route add default via ${IPV4_DEFAULT_GATEWAY}
+    if [ -n "$ipv6Default" ]
+    then
+      ip -6 route del default
+    fi
+    ip -6 route add default via ${IPV6_DEFAULT_GATEWAY}
+    /usr/local/bin/detect-v6-network.sh > /var/log/detect_v6_network.log 2>&1 &
+
+    tail -f /dev/null
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sipproxy64
+  namespace: cncp-production
+  annotations:
+    configmap.reloader.stakater.com/reload: "sipproxy64"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cncp-component: sipproxy64
+  template:
+    metadata:
+      labels:
+        cncp-component: sipproxy64
+      annotations:
+        k8s.v1.cni.cncf.io/networks: cncp-production/sipproxy-ens1@ens1,cncp-production/sipproxy-ens2@ens2
+        network.mingyangtech.com.cn/auto-recreate: "0"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: conf
+        configMap:
+          name: sipproxy64
+          defaultMode: 511
+      containers:
+      - name: sipproxy64
+        image: mingyangtech.com.cn/mingyang/sipproxy64:v1.0.5
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env:
+        - name: IPV4_DEFAULT_GATEWAY
+          value: 20.2.3.129
+        - name: IPV6_DEFAULT_GATEWAY
+          value: 2403:dac0:0:1006::51
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: conf
+          mountPath: /etc/resolv.conf
+          subPath: resolv.conf
+        - name: conf
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: entrypoint.sh
+        - name: conf
+          mountPath: /usr/local/bin/detect-v6-network.sh
+          subPath: detect-v6-network.sh
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute

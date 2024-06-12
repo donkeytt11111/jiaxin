@@ -1,0 +1,101 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: nat44s.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: Nat44
+    listKind: Nat44List
+    plural: nat44s
+    singular: nat44
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.mode
+          name: mode
+          type: string
+        - jsonPath: .spec.interfaces.name
+          name: name
+          type: string
+        - jsonPath: .spec.interfaces.type
+          name: type
+          type: string
+        - jsonPath: .spec.addressPool.name
+          name: name
+          type: string
+        - jsonPath: .spec.addressPool.firstIp
+          name: firstIp
+          type: string
+        - jsonPath: .spec.addressPool.lastIp
+          name: lastIp
+          type: string  
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: 'nat44 is the Schema for the nat44 API'
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: 'Nat44Spec defines the desired state of Vppinterface'
+              properties:
+                mode:
+                  type: string
+                  enum: ["EndpointIndependent","EndpointDependent"]
+                interfaces:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: 'Interface name (logical)'
+                      type:
+                        type: string
+                        enum: ["NatInside","NatOutside"]
+                        description: 'Enable/disable NAT on inside or output'
+                addressPool:
+                  type: object
+                  properties:
+                    vrfId:
+                      type: integer
+                      description: 'VRF id of tenant, 0xFFFFFFFF means independent of VRF,Non-zero (and not all-ones) VRF has to be explicitly created (see api/models/vpp/l3/vrf.proto)'
+                    name:
+                      type: string
+                      description: 'Unique name for address pool'
+                    firstIp:
+                      type: string
+                      description: 'First IP address of the pool'
+                    lastIp:
+                      type: string
+                      description: 'Last IP address of the pool. Should be higher than first_ip or empty'                            
+              required:
+              - interfaces
+              - addressPool
+              type: object
+          required:
+          - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+  

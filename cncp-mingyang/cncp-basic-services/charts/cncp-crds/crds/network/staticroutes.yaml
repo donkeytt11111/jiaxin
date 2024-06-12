@@ -1,0 +1,119 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: staticroutes.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: StaticRoute
+    listKind: StaticRouteList
+    plural: staticroutes
+    singular: staticroute
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.type
+          name: type
+          type: string
+        - jsonPath: .spec.destination
+          name: destination
+          type: string
+        - jsonPath: .spec.nextHopAddress
+          name: nextHopAddress
+          type: string
+        - jsonPath: .spec.weight
+          name: weight
+          type: integer
+        - jsonPath: .spec.vrfId
+          name: vrfId
+          type: integer
+        - jsonPath: .spec.outgoingInterface
+          name: outgoingInterface
+          type: string
+        - jsonPath: .spec.preference
+          name: preference
+          type: integer
+        - jsonPath: .spec.viaVrfId
+          name: viaVrfId
+          type: integer
+        - jsonPath: .spec.deviceName
+          name: deviceName
+          type: string
+        - jsonPath: .spec.scope
+          name: scope
+          type: string
+        - jsonPath: .spec.productType
+          name: productType
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: StaticRoute is the Schema for the staticRoutes API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: StaticRouteSpec defines the desired state of StaticRoute
+              properties:
+                type:
+                  description: 'route type,The optional values are INTRA_VRF , INTER_VRF and DROP'
+                  type: string
+                destination:
+                  description: 'Destination network defined by IP address and prefix (format: <address>/<prefix>).'
+                  type: string
+                nextHopAddress:
+                  description: 'Next hop address.'
+                  type: string
+                weight:
+                  description: 'Weight is used for unequal cost load balancing.'
+                  type: integer
+                vrfId:
+                  description: 'VRF identifier, field required for remote client. This value should be consistent with VRF ID in static route key. If it is not, value from key will be preffered and this field will be overriden. Non-zero VRF has to be explicitly created (see api/models/vpp/l3/vrf.proto)'
+                  type: integer
+                outgoingInterface:
+                  description: 'Interface name of the outgoing interface.'
+                  type: string
+                preference:
+                  description: 'Preference defines path preference. Lower preference is preferred. Only paths with the best preference contribute to forwarding (a poor mans primary and backup).'
+                  type: integer
+                viaVrfId:
+                  description: 'Specifies VRF ID for the next hop lookup / recursive lookup'
+                  type: integer
+                deviceName:
+                  description: 'The deviceName indicates the device to which the current route is bound.'
+                  type: string
+                scope:
+                  description: 'UNDEFINED,GLOBAL,SITE,LINK,HOST.'
+                  type: string
+                productType:
+                  description: 'product type include srv6 or others.'
+                  type: string
+              required:
+                - destination
+                - nextHopAddress
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: { }
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: [ ]
+  storedVersions: [ ]
+

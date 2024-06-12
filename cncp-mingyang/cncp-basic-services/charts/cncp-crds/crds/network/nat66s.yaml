@@ -1,0 +1,85 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: nat66s.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: Nat66
+    listKind: Nat66List
+    plural: nat66s
+    singular: nat66
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.enable
+          name: enable
+          type: boolean
+        - jsonPath: .spec.interfaces.name
+          name: name
+          type: string
+        - jsonPath: .spec.interfaces.type
+          name: type
+          type: string
+        - jsonPath: .spec.outsideVrf
+          name: outsideVrf
+          type: string 
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: 'nat66 is the Schema for the nat66 API'
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: 'Nat66Spec defines the desired state of Vppinterface'
+              properties:
+                enable:
+                  type: boolean
+                outsideVrf:
+                  type: integer
+                nat66Interfaces:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: 'Interface name (logical)'
+                      type:
+                        type: string
+                        enum: ["Inside","Outside"]
+                        description: 'Enable/disable interface on inside or outside'          
+              required:
+              - enable
+              - nat66Interfaces
+              type: object
+          required:
+          - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+  
+
+
+
+

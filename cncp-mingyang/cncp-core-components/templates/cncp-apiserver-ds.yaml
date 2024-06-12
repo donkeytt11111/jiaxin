@@ -1,0 +1,104 @@
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: cncp-apiserver
+  namespace: cncp-system
+spec:
+  selector:
+    matchLabels:
+      cncp-component: cncp-apiserver
+  template:
+    metadata:
+      labels:
+        cncp-component: cncp-apiserver
+        logging: "true"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap:
+          name: cncp
+      - name: pki
+        hostPath:
+          path: /system/secrets
+          type: DirectoryOrCreate
+      - name: kubelet-root-dir
+        hostPath:
+          path: /var/lib/kubelet
+          type: DirectoryOrCreate
+      containers:
+      - name: apiserver
+        {{- if .Values.cncpAPIServer.imageName }}
+        image: "{{ .Values.cncpAPIServer.imageName }}:{{ .Chart.AppVersion }}"
+        {{- else }}
+        image: "mingyangtech.com.cn/mingyang/cncp-apiserver:{{ .Chart.AppVersion }}"
+        {{- end }}
+        {{- if .Values.cncpAPIServer.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.cncpAPIServer.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        command:
+        - "cncp-apiserver"
+        ports:
+        - name: https
+          hostPort: 16443
+          containerPort: 16443
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.cncpAPIServer.resources.cpuLimit }}
+            cpu: {{ .Values.cncpAPIServer.resources.cpuLimit }}
+            {{- else }}
+            cpu: 1000m
+            {{- end }}
+            {{- if .Values.cncpAPIServer.resources.memoryLimit }}
+            memory: {{ .Values.cncpAPIServer.resources.memoryLimit }}
+            {{- else }}
+            memory: 4Gi
+            {{- end }}
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /root/.kube/config
+          subPath: kubeConfig
+        - name: config
+          mountPath: /etc/cncp/cncp-config.yaml
+          subPath: cncp-config.yaml
+        - name: pki
+          mountPath: /system/secrets
+        - name: kubelet-root-dir
+          mountPath: /var/lib/kubelet
+      restartPolicy: Always
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cncp-apiserver
+  namespace: cncp-system
+spec:
+  selector:
+    cncp-component: cncp-apiserver
+  ports:
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 16443
+  type: ClusterIP
+

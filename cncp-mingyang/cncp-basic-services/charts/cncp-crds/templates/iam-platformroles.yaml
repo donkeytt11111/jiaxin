@@ -1,0 +1,344 @@
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: cluster-view
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "查看集群中所有资源"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: ClusterManagement
+rules:
+- apiGroups:
+  - ""
+  - apiextensions.k8s.io
+  - app.k8s.io
+  - rbac.authorization.k8s.io
+  - apps
+  - autoscaling
+  - batch
+  - events.k8s.io
+  - extensions
+  - metrics.k8s.io
+  - monitoring.coreos.com
+  - networking.istio.io
+  - networking.k8s.io
+  - node.k8s.io
+  - scheduling.k8s.io
+  - snapshot.storage.k8s.io
+  - storage.k8s.io
+  - network.mingyangtech.com.cn
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: cluster-manage
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理集群中所有资源"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: ClusterManagement
+    iam.mingyangtech.com.cn/dependencies: cluster-view
+rules:
+- apiGroups:
+  - ""
+  - apiextensions.k8s.io
+  - app.k8s.io
+  - rbac.authorization.k8s.io
+  - apps
+  - autoscaling
+  - batch
+  - events.k8s.io
+  - extensions
+  - metrics.k8s.io
+  - monitoring.coreos.com
+  - networking.istio.io
+  - networking.k8s.io
+  - node.k8s.io
+  - scheduling.k8s.io
+  - snapshot.storage.k8s.io
+  - storage.k8s.io
+  - network.mingyangtech.com.cn
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - "*"
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-platform-role-view
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "查看所有平台角色"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+    iam.mingyangtech.com.cn/dependencies: rbac-user-view
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - users
+  - loginrecords
+  - platformroles
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-platform-role-manage
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理所有平台角色"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+    iam.mingyangtech.com.cn/dependencies: "rbac-platform-role-view,rbac-user-view"
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - users
+  - loginrecords
+  - platformroles
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-user-view
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "查看所有用户"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - users
+  - loginrecords
+  - platformroles
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-user-manage
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理所有用户"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+    iam.mingyangtech.com.cn/dependencies: "rbac-user-view,rbac-platform-role-view"
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - users
+  - loginrecords
+  - platformroles
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-login-security-view
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "查看所有登录安全策略"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - loginsecuritypolicies
+  - ipsecuritypolicies
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: rbac-login-security-manage
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理所有登录安全策略"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: AccessControl
+    iam.mingyangtech.com.cn/dependencies: "rbac-login-security-view"
+rules:
+- apiGroups:
+  - iam.mingyangtech.com.cn
+  - resources.mingyangtech.com.cn
+  resources:
+  - loginsecuritypolicies
+  - ipsecuritypolicies
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: global-basic-network-view
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "查看基础网络"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: ClusterManagement
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: global-basic-network-manage
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理基础网络"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: ClusterManagement
+    iam.mingyangtech.com.cn/dependencies: "global-basic-network-view"
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: cluster-base
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "集群基础权限"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: ClusterManagement
+rules:
+- apiGroups:
+  - resources.mingyangtech.com.cn
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: ddi-base
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "DDI产品基础权限"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: DDI
+rules:
+- apiGroups:
+  - network.mingyangtech.com.cn
+  resources:
+  - "*"
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: xyjh-base
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "true"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "协议交换平台产品基础权限"
+    iam.mingyangtech.com.cn/platformrole-creator: admin
+    iam.mingyangtech.com.cn/module: XYJH
+rules:
+- apiGroups:
+  - network.mingyangtech.com.cn
+  resources:
+  - "*"
+  verbs:
+  - "*"
+
+---
+kind: PlatformRole
+apiVersion: iam.mingyangtech.com.cn/v1alpha1
+metadata:
+  name: platform-admin
+  labels:
+    iam.mingyangtech.com.cn/platformrole-template: "false"
+  annotations:
+    iam.mingyangtech.com.cn/platformrole-description: "管理CNCP平台中所有资源"
+    iam.mingyangtech.com.cn/platformrole-creator: system
+    iam.mingyangtech.com.cn/aggregation-permissions: "cluster-view,cluster-manage,rbac-user-view,rbac-user-manage,rbac-platform-role-view,rbac-platform-role-manage,rbac-login-security-view,rbac-login-security-manage,global-basic-network-view,global-basic-network-manage"
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*"
+productRules:
+- productType: DDI
+  permissions:
+  - "*"
+- productType: XYJH
+  permissions:
+  - "*"

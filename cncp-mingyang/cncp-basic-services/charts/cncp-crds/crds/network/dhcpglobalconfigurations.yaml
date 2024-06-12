@@ -1,0 +1,73 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: dhcpglobalconfigurations.network.mingyangtech.com.cn
+spec:
+  group: network.mingyangtech.com.cn
+  names:
+    categories:
+      - network
+    kind: DhcpGlobalConfiguration
+    listKind: DhcpGlobalConfigurationList
+    plural: dhcpglobalconfigurations
+    singular: dhcpglobalconfiguration
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.defaultLeaseDuration
+          name: DEFAULTLEASEDURATION
+          type: integer
+        - jsonPath: .spec.maximumLeaseDuration
+          name: MAXIMUMLEASEDURATION
+          type: integer
+        - jsonPath: .spec.minimumLeaseDuration
+          name: MINIMUMLEASEDURATION
+          type: integer
+        - jsonPath: .spec.dnsServer
+          name: DNSSERVER
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: DhcpGlobalConfiguration is the Schema for the DDhcpGlobalConfigurations API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                defaultLeaseDuration:
+                  type: integer
+                maximumLeaseDuration:
+                  type: integer
+                minimumLeaseDuration:
+                  type: integer
+                dnsServer:
+                  type: array
+                  items:
+                    type: string
+                ddnsQualifyingSuffix:
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: { }
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: [ ]
+  storedVersions: [ ]
+

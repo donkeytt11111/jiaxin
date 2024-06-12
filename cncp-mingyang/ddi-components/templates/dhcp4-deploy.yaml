@@ -1,0 +1,331 @@
+{{- if and .Values.dhcp4.enabled (and .Values.dhcp4.networkType (eq .Values.dhcp4.networkType "Cluster")) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: dhcp4
+  namespace: cncp-production
+data:
+  keactrl.conf: |-
+    {
+      #!/bin/sh
+      prefix="/usr/local"
+      kea_dhcp4_config_file="${prefix}/etc/kea/kea-dhcp4.conf"
+      kea_dhcp6_config_file="${prefix}/etc/kea/kea-dhcp6.conf"
+      kea_dhcp_ddns_config_file="${prefix}/etc/kea/kea-dhcp-ddns.conf"
+      kea_ctrl_agent_config_file="${prefix}/etc/kea/kea-ctrl-agent.conf"
+      kea_netconf_config_file="${prefix}/etc/kea/kea-netconf.conf"
+      exec_prefix="${prefix}"
+      dhcp4_srv="${exec_prefix}/sbin/kea-dhcp4"
+      dhcp6_srv="${exec_prefix}/sbin/kea-dhcp6"
+      dhcp_ddns_srv="${exec_prefix}/sbin/kea-dhcp-ddns"
+      ctrl_agent_srv="${exec_prefix}/sbin/kea-ctrl-agent"
+      netconf_srv="${exec_prefix}/sbin/kea-netconf"
+      dhcp4=yes
+      dhcp6=no
+      dhcp_ddns=yes
+      ctrl_agent=yes
+      netconf=no
+      kea_verbose=no
+    }
+  kea-dhcp4.conf: |-
+    {
+      "Dhcp4": {
+        "interfaces-config": {
+          "interfaces": ["eth0"],
+          "dhcp-socket-type": "udp"
+        },
+        "control-socket": {
+          "socket-type": "unix",
+          "socket-name": "/tmp/kea4-ctrl-socket"
+        },
+        "expired-leases-processing": {
+          "reclaim-timer-wait-time": 10,
+          "flush-reclaimed-timer-wait-time": 25,
+          "hold-reclaimed-time": 3600,
+          "max-reclaim-leases": 100,
+          "max-reclaim-time": 250,
+          "unwarned-reclaim-cycles": 5
+        },
+        "renew-timer": 43200,
+        "rebind-timer": 75600,
+        "valid-lifetime": 86400,
+        "loggers": [
+          {
+            "name": "kea-dhcp4",
+            "output_options": [{"output": "/usr/local/var/log/kea-dhcp4.log"}],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  kea-dhcp-ddns.conf: |-
+    {
+      "DhcpDdns":{
+        "ip-address": "127.0.0.1",
+        "port": 53001,
+        "control-socket": {
+          "socket-type": "unix",
+          "socket-name": "/tmp/kea-ddns-ctrl-socket"
+        },
+        "reverse-ddns": {},
+        "forward-ddns": {},
+        "loggers": [
+          {
+            "name": "kea-dhcp-ddns",
+            "output_options": [
+              { "output": "/usr/local/var/log/kea-ddns.log" }
+            ],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  kea-ctrl-agent.conf: |-
+    {
+      "Control-agent": {
+        "http-host": "0.0.0.0",
+        "http-port": 8000,
+        "control-sockets": {
+          "dhcp4": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea4-ctrl-socket"
+          },
+          "dhcp6": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea6-ctrl-socket"
+          },
+          "d2": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea-ddns-ctrl-socket"
+          }
+        },
+        "loggers": [
+          {
+            "name": "kea-ctrl-agent",
+            "output_options": [
+              { "output": "/usr/local/var/log/kea-ctrl-agent.log" }
+            ],
+            "severity": "INFO",
+            "debuglevel": 0
+          }
+        ]
+      }
+    }
+  init-entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    DHCP_INIT_PATH="/etc/kea"
+    DHCP_CONFIG_PATH="/usr/local/etc/kea"
+    config_files=(keactrl.conf kea-dhcp4.conf kea-dhcp-ddns.conf kea-ctrl-agent.conf)
+    for file in ${config_files[@]}
+    do
+        if [ ! -f $DHCP_CONFIG_PATH/$file ]; then
+            cp $DHCP_INIT_PATH/$file $DHCP_CONFIG_PATH
+        fi
+    done
+  monitor.sh: |-
+    #!/usr/bin/env sh
+    log_file="/usr/local/var/log/monitor.log"
+    while [ true ]
+    do
+        check_result=`keactrl status`
+        if [[ $check_result =~ "DHCPv4 server: inactive" ]]
+        then 
+            echo "$(date): Stopping keactrl..." >> "$log_file"
+            keactrl stop
+            sleep 1
+            if [ -e "${RUNPATH}/kea-dhcp4.kea-dhcp4.pid" ]; then
+                rm -f "${RUNPATH}/kea-dhcp4.kea-dhcp4.pid"
+                echo "$(date): remove kea-dhcp4.kea-dhcp4.pid..." >> "$log_file"
+            fi
+            echo "$(date): Starting keactrl..." >> "$log_file"
+            keactrl start
+        fi    
+        sleep 3;
+    done
+  entrypoint.sh: |-
+    #!/usr/bin/env sh
+    set -e -u
+    RUNPATH="/usr/local/var/run/kea"
+    if [ -e "${RUNPATH}/kea-dhcp4.kea-dhcp4.pid" ]; then
+        rm -f "${RUNPATH}/kea-dhcp4.kea-dhcp4.pid"
+    fi
+    keactrl start -c /usr/local/etc/kea/keactrl.conf
+    /usr/local/bin/monitor.sh
+    tail -f /dev/null
+
+
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: dhcp4
+spec:
+  capacity:
+    storage: 20Gi
+  nfs:
+    server: endpoint
+    path: /var/local-storage
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: dhcp4storageclass
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: dhcp4
+  namespace: cncp-production
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: dhcp4storageclass
+---
+
+
+{{- if .Values.dhcp4.clusterNetworkIp4ServiceAddress }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dhcp4
+  namespace: cncp-production
+spec:
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  - name: dhcp4
+    protocol: UDP
+    port: 67
+    targetPort: 67
+  selector:
+    cncp-component: dhcp4
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.dhcp4.clusterNetworkIp4ServiceAddress }}
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  allocateLoadBalancerNodePorts: false
+  externalTrafficPolicy: Cluster
+{{- end }}
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: dhcp4
+  namespace: cncp-production
+spec: 
+  selector:
+    matchLabels: 
+      cncp-component: dhcp4
+  template: 
+    metadata:
+      labels: 
+        cncp-component: dhcp4
+        logging: "true"
+    spec:
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: config
+        configMap: 
+          name: dhcp4
+          defaultMode: 511
+      - name: storage
+        persistentVolumeClaim:
+          claimName: dhcp4
+      initContainers:
+      - name: init
+        image: mingyangtech.com.cn/mingyang/centos:v7.9.2009
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kea/keactrl.conf
+          subPath: keactrl.conf
+        - name: config
+          mountPath: /etc/kea/kea-dhcp4.conf
+          subPath: kea-dhcp4.conf
+        - name: config
+          mountPath: /etc/kea/kea-dhcp-ddns.conf
+          subPath: kea-dhcp-ddns.conf
+        - name: config
+          mountPath: /etc/kea/kea-ctrl-agent.conf
+          subPath: kea-ctrl-agent.conf
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: init-entrypoint.sh
+        - name: storage
+          mountPath: /usr/local/etc/kea
+          subPath: dhcp4/usr/local/etc/kea
+        securityContext:
+          privileged: true
+      containers:
+      - name: dhcp4
+        {{- if .Values.dhcp4.image }}
+        image: {{ .Values.dhcp4.image }}
+        {{- else }}
+        image: mingyangtech.com.cn/mingyang/cncp-dhcp:v2.1.0
+        {{- end }}
+        {{- if .Values.dhcp4.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.dhcp4.imagePullPolicy }}
+        {{- else }}
+        imagePullPolicy: IfNotPresent
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: dhcp4
+          containerPort: 67
+          protocol: UDP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 40Mi
+          limits:
+            {{- if .Values.dhcp4.resources.cpuLimit }}
+            cpu: {{ .Values.dhcp4.resources.cpuLimit }}
+            {{- else }}
+            cpu: 2000m
+            {{- end }}
+            {{- if .Values.dhcp4.resources.memoryLimit }}
+            memory: {{ .Values.dhcp4.resources.memoryLimit }}
+            {{- else }}
+            memory: 8Gi
+            {{- end }}
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: config
+          mountPath: /usr/local/bin/entrypoint.sh
+          subPath: entrypoint.sh
+        - name: config
+          mountPath: /usr/local/bin/monitor.sh
+          subPath: monitor.sh
+        - name: storage
+          mountPath: /usr/local/etc/kea
+          subPath: dhcp4/usr/local/etc/kea
+        - name: storage
+          mountPath: /usr/local/var/log
+          subPath: dhcp4/usr/local/var/log
+        securityContext:
+          privileged: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+{{- end }}
